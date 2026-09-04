@@ -1,0 +1,77 @@
+# ===== Flutter / Dart =====
+**/build/
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.packages
+**/.pub-cache/
+**/.pub/
+**/pubspec.lock
+
+# iOS 插件管理产物
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/Generated.xcconfig
+
+# macOS / Linux / Windows 子平台
+**/macos/Pods/
+**/macos/Flutter/ephemeral/
+**/linux/flutter/ephemeral/
+**/windows/flutter/ephemeral/
+
+# ===== IDE =====
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+*.swp
+*.swo
+
+# ===== macOS =====
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ===== iOS / Xcode =====
+**/xcuserdata/
+**/xcshareddata/
+**/DerivedData/
+**/*.xcuserstate
+**/*.xcscmblueprint
+**/*.xccheckout
+**/*.moved-aside
+
+# ===== Android / Gradle =====
+**/local.properties
+**/key.properties
+**/*.jks
+**/*.keystore
+**/google-services.json
+.gradle/
+captures/
+**/gradlew
+**/gradlew.bat
+**/gradle/wrapper/gradle-wrapper.jar
+
+# ===== WorkBuddy 个人工作日志（开发过程记录，仅本机留底）=====
+# 含 daily logs、长期 memory、计划文档、overview — 隐私且噪声大
+.workbuddy/
+.workbuddy-plans/
+
+# ===== 内部 AI 协作模板（老胡跟 AI 协作的提示词样板）=====
+/Hermes Agent 开发启动提示词.docx
+/Hermes_Agent_开发启动提示词.md
+
+# ===== 临时文件 =====
+*.tmp
+*.bak
+*.log
+*~
