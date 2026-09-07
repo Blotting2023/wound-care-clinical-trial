@@ -4,6 +4,7 @@ import '../models/user.dart';
 import '../models/user_role.dart';
 import '../services/app_secure_storage.dart';
 import '../services/auth_service.dart';
+import '../config/api_config.dart';
 
 class AuthProvider extends ChangeNotifier {
   AuthProvider({AuthService? authService, FlutterSecureStorage? storage})
@@ -28,6 +29,27 @@ class AuthProvider extends ChangeNotifier {
   User? get user => _user;
 
   UserRole? get role => _user?.role;
+
+  /// Demo 模式专用：根据 --dart-define DEMO_QUICK_LOGIN={role_prefix}
+  /// 启动时直接以该角色登入工作台。仅 demoMode 有效，其他情况自动跳过。
+  Future<void> maybeAutoLogin(String quickRole) async {
+    if (!ApiConfig.demoMode || quickRole.isEmpty) return;
+    final username = '${quickRole.toLowerCase()}_demo';
+    try {
+      // 用固定演示口令 demo，避开任何密码复杂度校验
+      final result = await _authService.login(
+        username: username,
+        password: 'demo',
+        serverUrl: ApiConfig.baseUrl,
+      );
+      _token = result['token'] as String?;
+      _user = result['user'] as User?;
+      _isAuthenticated = _user != null;
+      notifyListeners();
+    } catch (_) {
+      // 自动登录失败时仍停留登录页，保持可手动登录
+    }
+  }
 
   /// Restore session from secure storage on app start.
   Future<void> checkAuthOnStartup() async {

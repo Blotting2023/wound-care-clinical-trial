@@ -20,12 +20,20 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
+    await _doLogin(_userCtrl.text.trim(), _passCtrl.text);
+  }
+
+  Future<void> _quickLogin(String username) async {
+    await _doLogin(username, 'demo');
+  }
+
+  Future<void> _doLogin(String username, String password) async {
     try {
       await context.read<AuthProvider>().login(
-        _userCtrl.text.trim(),
-        _passCtrl.text,
-        _serverUrl,
-      );
+            username,
+            password,
+            _serverUrl,
+          );
       if (mounted) Navigator.pushReplacementNamed(context, '/home');
     } catch (e) {
       if (mounted) {
@@ -131,6 +139,57 @@ class _LoginScreenState extends State<LoginScreen> {
                       ],
                     ),
                   ),
+                if (ApiConfig.demoMode) ...[
+                  const SizedBox(height: 12),
+                  AppCard(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.bolt,
+                                color: AppTheme.actionBlue, size: 18),
+                            const SizedBox(width: 8),
+                            const Text('演示快捷登录（覆盖 RBAC 三档）',
+                                style: AppTheme.caption),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            OutlinedButton(
+                              onPressed: loading ? null : () => _quickLogin('pi_demo'),
+                              child: const Text('PI'),
+                            ),
+                            OutlinedButton(
+                              onPressed: loading ? null : () => _quickLogin('crc_demo'),
+                              child: const Text('CRC'),
+                            ),
+                            OutlinedButton(
+                              onPressed: loading ? null : () => _quickLogin('admin_demo'),
+                              child: const Text('Admin'),
+                            ),
+                            OutlinedButton(
+                              onPressed: loading ? null : () => _quickLogin('subi_demo'),
+                              child: const Text('Sub-I'),
+                            ),
+                            OutlinedButton(
+                              onPressed: loading ? null : () => _quickLogin('sponsor_demo'),
+                              child: const Text('Sponsor'),
+                            ),
+                            OutlinedButton(
+                              onPressed: loading ? null : () => _quickLogin('irb_demo'),
+                              child: const Text('IRB'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 Center(
                   child: TextButton(
