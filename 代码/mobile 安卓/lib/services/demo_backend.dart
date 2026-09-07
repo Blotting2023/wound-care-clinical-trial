@@ -2,9 +2,11 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 
+import '../models/consent_form.dart';
+import '../models/user.dart';
+import '../models/user_role.dart';
 import 'audit_logger.dart';
 import 'subject_code_generator.dart';
-
 /// In-memory demo backend.
 ///
 /// On top of the previous seed + workflow behaviour, this revision (2026-09-03)
@@ -43,6 +45,9 @@ class DemoBackend extends Interceptor {
   /// 与 audit_logger 区分，专门追"PI 必签的 CRF 完成声明"事件。
   final List<Map<String, dynamic>> _crfCompletionDeclarations = [];
 
+  /// W4.1 — 知情同意书存储。Key = consentId。
+  final Map<String, Map<String, dynamic>> _consents = {};
+
   /// Encrypted identity map (mock). Keyed by `subjectCode`. In production
   /// this lives in `PatientIdentityMap` with KMS-encrypted columns.
   final Map<String, Map<String, dynamic>> _identityMap = {};
@@ -59,8 +64,9 @@ class DemoBackend extends Interceptor {
 
   /// Demo operator context. In production this is derived from the verified
   /// JWT — for the demo we hard-code a PI identity so identity-access works
-  /// out of the box.
-  static final AuditContext _demoCtx = AuditContext(
+  /// out of the box. **Mutated on every `/auth/login`** so all subsequent
+  /// API calls carry the right role/operator id.
+  static AuditContext _demoCtx = AuditContext(
     operatorId: 'demo-nurse-01',
     operatorName: '演示护士',
     operatorRole: 'PI',
@@ -68,6 +74,65 @@ class DemoBackend extends Interceptor {
     deviceFingerprint: 'sim-iphone16pro',
     appVersion: '0.1.0',
   );
+
+  /// 已登录用户缓存（demo 单会话；多会话需要 token→ctx map）
+  static User? _currentUser;
+
+  /// W4.3 — demo 登录时按 username 前缀派角色，方便老胡一秒钟切角色。
+  /// 生产场景由真实 OAuth / LDAP 给 role，不允许客户端自报。
+  UserRole _roleForUsername(String username) {
+    final u = username.toLowerCase();
+    if (u.startsWith('pi') || u.contains('pi')) return UserRole.PI;
+    if (u.startsWith('subi') || u.contains('subi')) return UserRole.SubI;
+    if (u.startsWith('admin') || u.contains('admin')) return UserRole.Admin;
+    if (u.startsWith('sponsor') || u.contains('sponsor')) return UserRole.Sponsor;
+    if (u.startsWith('irb')) return UserRole.IRB;
+    return UserRole.CRC; // 默认最低权限
+  }
+
+  /// 把当前 demo 操作员的 display name 按角色生成。
+  String _displayNameFor(String username, UserRole role) {
+    final base = username.trim().isEmpty ? '演示用户' : username.trim();
+    return '$base（${role.displayName}）';
+  }
+
+  /// 通用权限检查 — W4.1/W4.2 端点都会用。
+  /// 返回 null 表示通过；返回 Response 表示 403。
+  /// 调用方传 [options]（用于构造 Response）+ [requiredPermission]。
+  Response<dynamic>? _checkPermission(
+      RequestOptions options, String requiredPermission) {
+    final user = _currentUser;
+    if (user == null) {
+      return Response<dynamic>(
+        requestOptions: options,
+        data: {'message': 'Unauthorized'},
+        statusCode: 401,
+      );
+    }
+    final perms = user.permissions;
+    if (perms.contains('*')) return null; // Admin 通配
+    if (perms.contains(requiredPermission)) return null;
+    // 写审计：access denied
+    AuditLogger.I.record(
+      tableName: requiredPermission.split(':').first,
+      recordId: 'n/a',
+      opType: AuditOpType.accessDenied,
+      afterValue: {
+        'permission': requiredPermission,
+        'role': user.role.name,
+      },
+      ctx: _demoCtx,
+      reason: '越权访问被拒',
+    );
+    return Response<dynamic>(
+      requestOptions: options,
+      data: {
+        'message':
+            '权限不足：${user.role.displayName} 无权执行 $requiredPermission',
+      },
+      statusCode: 403,
+    );
+  }
 
   String _nextSubjectCode(String realName) {
     final prefix = const SubjectCodeGenerator().generate(realName, 0);
@@ -543,11 +608,95 @@ class DemoBackend extends Interceptor {
     try {
       // ---------- auth ----------
       if (method == 'POST' && path == '/auth/login') {
+        final body = (options.data as Map?)?.cast<String, dynamic>() ?? {};
+        final username = (body['username'] as String? ?? '').trim();
+        if (username.isEmpty) {
+          return handler.reject(DioException(
+              requestOptions: options,
+              response: ok({'message': '用户名不能为空'}, statusCode: 400)));
+        }
+        final role = _roleForUsername(username);
+        final user = User(
+          id: 'u_${username.toLowerCase()}',
+          username: username,
+          displayName: _displayNameFor(username, role),
+          role: role,
+          centerIds: const ['c1', 'c2'],
+          permissions: RolePermissionMatrix.permissionsOf(role),
+        );
+        // 更新 demo ctx + 缓存 user
+        _currentUser = user;
+        _demoCtx = AuditContext(
+          operatorId: user.id,
+          operatorName: user.displayName,
+          operatorRole: role.name,
+          operatorIp: '127.0.0.1',
+          deviceFingerprint: 'sim-iphone16pro',
+          appVersion: '0.1.0',
+        );
         return handler.resolve(ok({
-          'token': 'demo-token-${DateTime.now().millisecondsSinceEpoch}',
-          'userId': 'demo-nurse-01',
-          'displayName': '演示护士',
-          'role': 'PI', // demo default — full privilege
+          'token': 'demo-token-${role.name}-${DateTime.now().millisecondsSinceEpoch}',
+          'user': user.toJson(),
+          'userId': user.id,
+          'displayName': user.displayName,
+          'role': role.name,
+        }));
+      }
+      if (method == 'GET' && path == '/auth/me') {
+        final u = _currentUser;
+        if (u == null) {
+          return handler.reject(DioException(
+              requestOptions: options,
+              response: ok({'message': '未登录'}, statusCode: 401)));
+        }
+        return handler.resolve(ok(u.toJson()));
+      }
+      // 切换演示角色（V1 demo 专属，绕过 /auth/login 重新登录）
+      if (method == 'POST' && path == '/auth/switch-demo-role') {
+        final body = (options.data as Map?)?.cast<String, dynamic>() ?? {};
+        final roleStr = body['role'] as String?;
+        final newRole = UserRole.tryParse(roleStr);
+        if (newRole == null) {
+          return handler.reject(DioException(
+              requestOptions: options,
+              response: ok({'message': '未知角色: $roleStr'}, statusCode: 400)));
+        }
+        final oldRole = _currentUser?.role;
+        final newUser = (_currentUser ??
+                User(
+                  id: 'demo',
+                  username: 'demo',
+                  displayName: '演示用户',
+                  role: newRole,
+                ))
+            .copyWith(
+          role: newRole,
+          displayName: _displayNameFor('demo', newRole),
+          permissions: RolePermissionMatrix.permissionsOf(newRole),
+        );
+        _currentUser = newUser;
+        _demoCtx = AuditContext(
+          operatorId: newUser.id,
+          operatorName: newUser.displayName,
+          operatorRole: newRole.name,
+          operatorIp: '127.0.0.1',
+          deviceFingerprint: 'sim-iphone16pro',
+          appVersion: '0.1.0',
+        );
+        // 审计：角色切换
+        AuditLogger.I.record(
+          tableName: 'user',
+          recordId: newUser.id,
+          opType: AuditOpType.update,
+          fieldName: 'role',
+          beforeValue: oldRole?.name,
+          afterValue: newRole.name,
+          ctx: _demoCtx,
+          reason: 'V1 demo 切换演示角色',
+        );
+        return handler.resolve(ok({
+          'user': newUser.toJson(),
+          'role': newRole.name,
         }));
       }
       if (method == 'POST' &&
@@ -566,6 +715,12 @@ class DemoBackend extends Interceptor {
         }));
       }
       if (method == 'POST' && path == '/patients') {
+        // W4.3 — 角色守门：CRC/PI/SubI/Admin 才能新建受试者
+        final perm = _checkPermission(options, Permission.patientCreate);
+        if (perm != null) {
+          return handler.reject(
+              DioException(requestOptions: options, response: perm));
+        }
         _ensureSeeded();
         final body = (options.data as Map?)?.cast<String, dynamic>() ?? {};
         final now = _nowIso();
@@ -695,6 +850,216 @@ class DemoBackend extends Interceptor {
       }
 
       // ---------- W2 试验方案 / 中心 / 试用器械 / 台账 ----------
+      // ---------- consents (W4.1) ----------
+      if (method == 'POST' && path == '/consents') {
+        // 守门：consent:sign 权限
+        final perm = _checkPermission(options, Permission.consentSign);
+        if (perm != null) {
+          return handler.reject(
+              DioException(requestOptions: options, response: perm));
+        }
+        final body = (options.data as Map?)?.cast<String, dynamic>() ?? {};
+        final patientId = body['patientId'] as String?;
+        if (patientId == null || patientId.isEmpty) {
+          return handler.reject(DioException(
+              requestOptions: options,
+              response: ok({'message': 'patientId 必填'}, statusCode: 400)));
+        }
+        // 校验患者存在
+        if (!_patients.values.any((p) => p['id'] == patientId)) {
+          return handler.reject(DioException(
+              requestOptions: options,
+              response: ok({'message': '患者不存在'}, statusCode: 404)));
+        }
+        final mode = ConsentMode.tryParse(body['mode'] as String?) ??
+            ConsentMode.PAPER_PHOTO;
+        final id = _newId('csnt');
+        final now = _nowIso();
+        final consent = <String, dynamic>{
+          'id': id,
+          'patientId': patientId,
+          'protocolId': body['protocolId'] as String? ?? 'pr1',
+          'centerId': body['centerId'] as String?,
+          'version': body['version'] as String? ?? '1.0',
+          'mode': mode.name,
+          'signedAt': now,
+          'signedBy': body['signedBy'] as String? ?? _demoCtx.operatorId,
+          'signedByName': body['signedByName'] as String? ?? _demoCtx.operatorName,
+          'pdfPath': body['pdfPath'],
+          'signaturePath': body['signaturePath'],
+          'signatureStrokeJson': body['signatureStrokeJson'],
+          'deviceFingerprint':
+              body['deviceFingerprint'] as String? ?? _demoCtx.deviceFingerprint,
+          'operatorIp': body['operatorIp'] as String? ?? _demoCtx.operatorIp,
+          'signedPaperPath': body['signedPaperPath'],
+          'paperSignedDate': body['paperSignedDate'] as String?,
+          'witnessName': body['witnessName'] as String?,
+          'withdrawnAt': null,
+          'withdrawnBy': null,
+          'withdrawReason': null,
+          // B 通道默认未审核
+          'reviewedByPi': mode == ConsentMode.E_CONSENT,
+          'reviewedBy': mode == ConsentMode.E_CONSENT
+              ? _demoCtx.operatorId
+              : null,
+          'reviewedAt': mode == ConsentMode.E_CONSENT ? now : null,
+          'reviewNote': null,
+          'createdAt': now,
+          'updatedAt': now,
+        };
+        _consents[id] = consent;
+        // 审计：A 通道 sign / B 通道 sign (待审核)
+        AuditLogger.I.record(
+          tableName: 'consent',
+          recordId: id,
+          opType: AuditOpType.consentSign,
+          fieldName: 'mode',
+          afterValue: mode.name,
+          ctx: _demoCtx,
+          reason: mode == ConsentMode.E_CONSENT
+              ? 'A 通道 eConsent 签署'
+              : 'B 通道纸质件拍照存档',
+        );
+        return handler.resolve(ok(consent, statusCode: 201));
+      }
+      // 撤回
+      final withdrawMatch =
+          RegExp(r'^/consents/([^/]+)/withdraw$').firstMatch(path);
+      if (withdrawMatch != null && method == 'POST') {
+        final perm = _checkPermission(options, Permission.consentWithdraw);
+        if (perm != null) {
+          return handler.reject(
+              DioException(requestOptions: options, response: perm));
+        }
+        final id = withdrawMatch.group(1)!;
+        final c = _consents[id];
+        if (c == null) {
+          return handler.reject(DioException(
+              requestOptions: options,
+              response: ok({'message': 'consent 不存在'}, statusCode: 404)));
+        }
+        if (c['withdrawnAt'] != null) {
+          return handler.reject(DioException(
+              requestOptions: options,
+              response: ok({'message': '已撤回'}, statusCode: 409)));
+        }
+        final body =
+            (options.data as Map?)?.cast<String, dynamic>() ?? {};
+        c['withdrawnAt'] = _nowIso();
+        c['withdrawnBy'] = _demoCtx.operatorId;
+        c['withdrawReason'] = body['reason'] as String? ?? '（未填）';
+        c['updatedAt'] = c['withdrawnAt'];
+        AuditLogger.I.record(
+          tableName: 'consent',
+          recordId: id,
+          opType: AuditOpType.consentWithdraw,
+          fieldName: 'withdrawnAt',
+          beforeValue: null,
+          afterValue: c['withdrawnAt'],
+          ctx: _demoCtx,
+          reason: c['withdrawReason'] as String,
+        );
+        return handler.resolve(ok(c));
+      }
+      // B 通道 PI 审核
+      final reviewMatch =
+          RegExp(r'^/consents/([^/]+)/review$').firstMatch(path);
+      if (reviewMatch != null && method == 'POST') {
+        final perm = _checkPermission(options, Permission.consentSign);
+        if (perm != null) {
+          return handler.reject(
+              DioException(requestOptions: options, response: perm));
+        }
+        final id = reviewMatch.group(1)!;
+        final c = _consents[id];
+        if (c == null) {
+          return handler.reject(DioException(
+              requestOptions: options,
+              response: ok({'message': 'consent 不存在'}, statusCode: 404)));
+        }
+        if (c['mode'] != ConsentMode.PAPER_PHOTO.name) {
+          return handler.reject(DioException(
+              requestOptions: options,
+              response: ok(
+                  {'message': 'A 通道 eConsent 无需 PI 复核'},
+                  statusCode: 400)));
+        }
+        final body =
+            (options.data as Map?)?.cast<String, dynamic>() ?? {};
+        c['reviewedByPi'] = true;
+        c['reviewedBy'] = _demoCtx.operatorId;
+        c['reviewedAt'] = _nowIso();
+        c['reviewNote'] = body['note'] as String? ?? '';
+        c['updatedAt'] = c['reviewedAt'];
+        AuditLogger.I.record(
+          tableName: 'consent',
+          recordId: id,
+          opType: AuditOpType.update,
+          fieldName: 'reviewedByPi',
+          beforeValue: false,
+          afterValue: true,
+          ctx: _demoCtx,
+          reason: 'B 通道纸质件 PI 审核通过',
+        );
+        return handler.resolve(ok(c));
+      }
+      // 查某患者所有 consent
+      final patientConsentMatch =
+          RegExp(r'^/consents/patient/([^/]+)$').firstMatch(path);
+      if (patientConsentMatch != null && method == 'GET') {
+        final perm = _checkPermission(options, Permission.auditRead);
+        if (perm != null) {
+          return handler.reject(
+              DioException(requestOptions: options, response: perm));
+        }
+        final pid = patientConsentMatch.group(1)!;
+        final list = _consents.values
+            .where((c) => c['patientId'] == pid)
+            .toList()
+          ..sort((a, b) =>
+              (b['signedAt'] as String).compareTo(a['signedAt'] as String));
+        return handler.resolve(ok({
+          'data': list,
+          'totalElements': list.length,
+        }));
+      }
+      // 切换中心 consentMode
+      final centerModeMatch =
+          RegExp(r'^/centers/([^/]+)/consent-mode$').firstMatch(path);
+      if (centerModeMatch != null && method == 'PUT') {
+        final perm = _checkPermission(options, Permission.consentConfigure);
+        if (perm != null) {
+          return handler.reject(
+              DioException(requestOptions: options, response: perm));
+        }
+        final cid = centerModeMatch.group(1)!;
+        final body =
+            (options.data as Map?)?.cast<String, dynamic>() ?? {};
+        final newMode =
+            ConsentMode.tryParse(body['mode'] as String?);
+        if (newMode == null) {
+          return handler.reject(DioException(
+              requestOptions: options,
+              response: ok({'message': 'mode 必填'}, statusCode: 400)));
+        }
+        final oldMode = _centers[cid]?['consentMode'];
+        _centers[cid]?['consentMode'] = newMode.name;
+        _centers[cid]?['consentModeSetAt'] = _nowIso();
+        _centers[cid]?['consentModeSetBy'] = _demoCtx.operatorId;
+        _centers[cid]?['updatedAt'] = _centers[cid]?['consentModeSetAt'];
+        AuditLogger.I.record(
+          tableName: 'center',
+          recordId: cid,
+          opType: AuditOpType.update,
+          fieldName: 'consentMode',
+          beforeValue: oldMode,
+          afterValue: newMode.name,
+          ctx: _demoCtx,
+          reason: '机构设置：中心 consentMode 切换',
+        );
+        return handler.resolve(ok(_centers[cid]));
+      }
+      // ---------- 原有 trial 端点 ----------
       if (method == 'GET' && path == '/protocols') {
         _ensureSeeded();
         return handler.resolve(ok({

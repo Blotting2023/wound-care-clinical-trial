@@ -80,6 +80,10 @@ class PhotoMetadata {
   /// 关联的鉴认代码（subjectCode，方便跨表溯源）。
   final String? subjectCode;
 
+  /// W4.2 — 真云上传后返回的 COS 远程 URL。
+  /// mock 模式下为 null（仅持有 cosKey 路径）。
+  final String? remoteUrl;
+
   const PhotoMetadata({
     required this.cosKey,
     required this.thumbKey,
@@ -101,6 +105,7 @@ class PhotoMetadata {
     this.mimeType,
     this.bytes,
     this.subjectCode,
+    this.remoteUrl,
   });
 
   /// 完整 JSON 给服务端 + UI 渲染。
@@ -125,6 +130,7 @@ class PhotoMetadata {
         'bytes': bytes,
         'uploadedAt': uploadedAt.toUtc().toIso8601String(),
         'subjectCode': subjectCode,
+        'remoteUrl': remoteUrl,
       };
 
   /// 服务端透传回来的 JSON 还原（demo_backend 用）。

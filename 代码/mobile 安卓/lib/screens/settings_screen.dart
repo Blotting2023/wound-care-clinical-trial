@@ -2,15 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../config/api_config.dart';
 import '../config/app_theme.dart';
+import '../models/user.dart';
+import '../models/user_role.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/app_ui.dart';
+import '../widgets/menu_guard.dart';
+import 'admin/role_assignment_screen.dart';
 import 'audit_log_screen.dart';
 import 'center_manage_screen.dart';
 import 'device_inventory_screen.dart';
+import 'institution_settings_screen.dart';
 import 'protocol_manage_screen.dart';
 import 'tutorial_screen.dart';
 
-/// 「我的」页：账号信息 + 简易教程 / 服务器设置 / 退出登录。
+/// 「我的」页：账号信息（带角色 chip）+ 简易教程 / 服务器设置 / 退出登录。
+/// W4.3 起菜单按角色过滤。
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -29,13 +35,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final user = context.watch<AuthProvider>().user;
     return Scaffold(
       backgroundColor: AppTheme.pageBackground,
       appBar: AppBar(title: const Text('我的')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
         children: [
-          _buildProfileCard(),
+          _buildProfileCard(user),
           const SizedBox(height: 20),
           const SectionTitle('使用帮助'),
           const SizedBox(height: 12),
@@ -77,47 +84,130 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          const SectionTitle('试验管理'),
-          const SizedBox(height: 12),
-          AppCard(
-            child: Column(
-              children: [
-                _MenuItem(
-                  icon: Icons.assignment_rounded,
-                  title: '试验方案',
-                  subtitle: '方案代号 / 版本 / 试验期 (GCP §A3)',
-                  color: AppTheme.actionBlue,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const ProtocolManageScreen()),
+          // 试验管理 — 仅 PI/Admin/CRC/Sponsor 可见（按 role）
+          MenuGuard(
+            user: user,
+            menuKey: 'protocols',
+            child: const SectionTitle('试验管理'),
+          ),
+          MenuGuard(
+            user: user,
+            menuKey: 'protocols',
+            child: const SizedBox(height: 12),
+          ),
+          MenuGuard(
+            user: user,
+            menuKey: 'protocols',
+            child: AppCard(
+              child: Column(
+                children: [
+                  MenuGuard(
+                    user: user,
+                    menuKey: 'protocols',
+                    child: _MenuItem(
+                      icon: Icons.assignment_rounded,
+                      title: '试验方案',
+                      subtitle: '方案代号 / 版本 / 试验期 (GCP §A3)',
+                      color: AppTheme.actionBlue,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const ProtocolManageScreen()),
+                      ),
+                    ),
                   ),
-                ),
-                const Divider(height: 20, color: AppTheme.cardBorder),
-                _MenuItem(
-                  icon: Icons.local_hospital_rounded,
-                  title: '研究中心',
-                  subtitle: '分中心 IRB 备案与 PI 指派 (GCP §A3 多中心)',
-                  color: AppTheme.actionBlue,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const CenterManageScreen()),
+                  MenuGuard(
+                    user: user,
+                    menuKey: 'centers',
+                    child: const Divider(height: 20, color: AppTheme.cardBorder),
                   ),
-                ),
-                const Divider(height: 20, color: AppTheme.cardBorder),
-                _MenuItem(
-                  icon: Icons.inventory_2_rounded,
-                  title: '器械库存台账',
-                  subtitle: '批号 / 序列号 / 有效期 / 在用归还 (GCP §22)',
-                  color: AppTheme.actionBlue,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const DeviceInventoryScreen()),
+                  MenuGuard(
+                    user: user,
+                    menuKey: 'centers',
+                    child: _MenuItem(
+                      icon: Icons.local_hospital_rounded,
+                      title: '研究中心',
+                      subtitle:
+                          '分中心 IRB 备案与 PI 指派 (GCP §A3 多中心)',
+                      color: AppTheme.actionBlue,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const CenterManageScreen()),
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                  MenuGuard(
+                    user: user,
+                    menuKey: 'devices',
+                    child: const Divider(height: 20, color: AppTheme.cardBorder),
+                  ),
+                  MenuGuard(
+                    user: user,
+                    menuKey: 'devices',
+                    child: _MenuItem(
+                      icon: Icons.inventory_2_rounded,
+                      title: '器械库存台账',
+                      subtitle: '批号 / 序列号 / 有效期 / 在用归还 (GCP §22)',
+                      color: AppTheme.actionBlue,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const DeviceInventoryScreen()),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // 管理员专属：角色分配
+          MenuGuard(
+            user: user,
+            allowedRoles: const [UserRole.Admin],
+            child: const SizedBox(height: 20),
+          ),
+          MenuGuard(
+            user: user,
+            allowedRoles: const [UserRole.Admin],
+            child: const SectionTitle('管理员'),
+          ),
+          MenuGuard(
+            user: user,
+            allowedRoles: const [UserRole.Admin],
+            child: const SizedBox(height: 12),
+          ),
+          MenuGuard(
+            user: user,
+            allowedRoles: const [UserRole.Admin],
+            child: AppCard(
+              child: Column(
+                children: [
+                  _MenuItem(
+                    icon: Icons.admin_panel_settings_rounded,
+                    title: '角色分配（演示）',
+                    subtitle: '一键切换 6 角色查看不同菜单',
+                    color: AppTheme.statusLocked,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const RoleAssignmentScreen()),
+                    ),
+                  ),
+                  const Divider(height: 20, color: AppTheme.cardBorder),
+                  _MenuItem(
+                    icon: Icons.business_rounded,
+                    title: '机构设置',
+                    subtitle: '按中心切换 eConsent 通道 (A/B)',
+                    color: AppTheme.actionBlue,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => const InstitutionSettingsScreen()),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 20),
@@ -191,7 +281,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildProfileCard() {
+  Widget _buildProfileCard(User? user) {
+    final role = user?.role;
     return AppCard(
       child: Row(
         children: [
@@ -210,17 +301,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('演示护士（PI 视角）',
-                    style: AppTheme.body
-                        .copyWith(fontWeight: FontWeight.w600, fontSize: 16)),
+                Text(
+                  user?.displayName ?? '未登录',
+                  style: AppTheme.body
+                      .copyWith(fontWeight: FontWeight.w600, fontSize: 16),
+                ),
                 const SizedBox(height: 4),
-                Text('demo-nurse-01 · 主要研究者', style: AppTheme.micro),
+                Text(
+                  user == null
+                      ? '请先登录'
+                      : '${user.username} · ${role?.displayName ?? "—"}',
+                  style: AppTheme.micro,
+                ),
                 const SizedBox(height: 2),
-                Text('角色 PI / V1 演示', style: AppTheme.micro),
+                if (role != null)
+                  Row(
+                    children: [
+                      TypeChip(label: role.name, selected: true),
+                      const SizedBox(width: 6),
+                      if (user!.canViewRealName)
+                        const TypeChip(label: '可见真名', selected: true),
+                      if (!user.canViewRealName)
+                        const TypeChip(label: '真名脱敏', selected: false),
+                    ],
+                  ),
               ],
             ),
           ),
-          const TypeChip(label: '已授权', selected: true),
         ],
       ),
     );
@@ -236,7 +343,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             '· 电子签名：每次评估需 6 位 PIN 签名，签名后记录锁定不可修改。\n\n'
             '· 审计追踪：创建、修改、签名、查看等操作全程留痕（21 CFR Part 11）。\n\n'
             '· 数据脱敏：患者身份信息与影像数据分离存储，遵循 PIPL 与 GCP 要求。\n\n'
-            '· 只读回看：已锁定记录在任何页面均为只读，更正需走修订流程。',
+            '· 只读回看：已锁定记录在任何页面均为只读，更正需走修订流程。\n\n'
+            '· 角色权限：6 角色 RBAC，越权操作被服务端 403 拒绝并写审计。',
             style: TextStyle(fontSize: 13, height: 1.7),
           ),
         ),
@@ -290,7 +398,7 @@ class _MenuItem extends StatelessWidget {
               children: [
                 Text(title,
                     style: AppTheme.body.copyWith(
-                        fontWeight: FontWeight.w600, fontSize: 15)),
+                        fontSize: 15, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 2),
                 Text(subtitle, style: AppTheme.micro),
               ],
@@ -298,7 +406,7 @@ class _MenuItem extends StatelessWidget {
           ),
           if (showChevron)
             const Icon(Icons.chevron_right_rounded,
-                color: AppTheme.textHint, size: 20),
+                color: AppTheme.textSecondary),
         ],
       ),
     );

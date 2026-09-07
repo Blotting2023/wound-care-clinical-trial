@@ -4,6 +4,14 @@
 /// investigator, address.  Per GCP §2022 第28号 第三章，every
 /// participating site must have IRB approval on file before any
 /// subject is enrolled.
+///
+/// W4.1: 加了 `consentMode` 字段 — 中心维度配置 eConsent 接受态度。
+/// `consentModeSetAt` / `consentModeSetBy` 记录切换时间与操作员，
+/// 切换写 AuditLog（CONFIG_CHANGE opType）。
+library;
+
+import 'consent_form.dart';
+
 class ResearchCenter {
   final String id;
   final String code; // e.g. "SD-HOSP-001"
@@ -17,6 +25,12 @@ class ResearchCenter {
   final DateTime createdAt;
   final DateTime updatedAt;
 
+  /// W4.1 — 中心维度的知情同意模式。
+  /// 默认 PAPER_PHOTO（B 通道，老胡所在医院默认走这个）。
+  final ConsentMode consentMode;
+  final DateTime? consentModeSetAt;
+  final String? consentModeSetBy;
+
   const ResearchCenter({
     required this.id,
     required this.code,
@@ -29,6 +43,9 @@ class ResearchCenter {
     this.leadPiName,
     required this.createdAt,
     required this.updatedAt,
+    this.consentMode = ConsentMode.PAPER_PHOTO,
+    this.consentModeSetAt,
+    this.consentModeSetBy,
   });
 
   factory ResearchCenter.fromJson(Map<String, dynamic> json) {
@@ -46,6 +63,12 @@ class ResearchCenter {
       leadPiName: json['leadPiName'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
+      consentMode: ConsentMode.tryParse(json['consentMode'] as String?) ??
+          ConsentMode.PAPER_PHOTO,
+      consentModeSetAt: json['consentModeSetAt'] != null
+          ? DateTime.parse(json['consentModeSetAt'] as String)
+          : null,
+      consentModeSetBy: json['consentModeSetBy'] as String?,
     );
   }
 
@@ -61,6 +84,9 @@ class ResearchCenter {
         'leadPiName': leadPiName,
         'createdAt': createdAt.toIso8601String(),
         'updatedAt': updatedAt.toIso8601String(),
+        'consentMode': consentMode.name,
+        'consentModeSetAt': consentModeSetAt?.toIso8601String(),
+        'consentModeSetBy': consentModeSetBy,
       };
 
   ResearchCenter copyWith({
@@ -75,6 +101,9 @@ class ResearchCenter {
     String? leadPiName,
     DateTime? createdAt,
     DateTime? updatedAt,
+    ConsentMode? consentMode,
+    DateTime? consentModeSetAt,
+    String? consentModeSetBy,
   }) {
     return ResearchCenter(
       id: id ?? this.id,
@@ -88,6 +117,9 @@ class ResearchCenter {
       leadPiName: leadPiName ?? this.leadPiName,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      consentMode: consentMode ?? this.consentMode,
+      consentModeSetAt: consentModeSetAt ?? this.consentModeSetAt,
+      consentModeSetBy: consentModeSetBy ?? this.consentModeSetBy,
     );
   }
 

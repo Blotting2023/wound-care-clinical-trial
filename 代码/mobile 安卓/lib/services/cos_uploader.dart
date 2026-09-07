@@ -4,26 +4,23 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../config/cloud.dart';
 import '../models/photo_metadata.dart';
 import '../utils/photo_time.dart';
 
-/// GCP W3.1 — V1 demo 阶段的 "COS 上传器"。
+/// GCP W3.1 + W4.2 — 创面照片上传器（mock / real 模式自动路由）。
 ///
-/// ## 关键约束（来自 `V1开发任务卡.md` W3.1）
+/// ## V1 demo 阶段（默认）
+/// 走 mock：本地路径 + sha256 + 模拟 120ms 延时，**无需任何凭证**。
 ///
-/// > `lib/services/cos_uploader.dart` 🆕 — 走腾讯云 COS（V1 demo
-/// > 阶段用本地路径 + sha256 模拟）。
+/// ## 真实接入（V4 规划）
+/// 走真腾讯云 COS，需 `--dart-define` 注入 5 个变量：
+///   - CLOUD_MODE=real
+///   - COS_SECRET_ID / COS_SECRET_KEY / COS_BUCKET / COS_REGION
 ///
-/// ## 模拟逻辑（V1）
-///
-/// 1. 读前 64 KB → 算 SHA256（避免大文件整体读入）
-/// 2. 生成 cosKey = `/original/{assessmentId}/{ISO8601-safe}.jpg`
-///    + thumbKey = `/thumb/{assessmentId}/{ISO8601-safe}.jpg`
-/// 3. 模拟延时 120 ms（等效一次网络往返）
-/// 4. 返回完整 [PhotoMetadata] 给调用方
-///
-/// 真实接入时把"模拟"换成腾讯云 COS SDK 或自实现 HMAC-SHA1 签名请求，
-/// 路径规则保持不变以兼容存储分层。
+/// 真实模式下当前客户端**只占位**（抛 `UnsupportedError`），由后续 V4
+/// 接腾讯云 COS SDK 或自实现 HMAC-SHA1 签名请求。
+/// 接口契约（参数 / 返回类型）保持不变，避免上游大改。
 class CosUploader {
   /// demo 校准卡尺寸（硬编码 2.0 cm × 2.0 cm）。
   static const double demoCardDimensionCm = 2.0;
@@ -36,6 +33,12 @@ class CosUploader {
   /// 单例，调用方复用同一实例即可。
   static final CosUploader I = CosUploader._internal();
   CosUploader._internal();
+
+  /// W4.2 — 读取云配置（mock/real 自动判断）
+  final CloudConfig _cloud = CloudConfig.fromEnvironment();
+
+  /// 当前是否真实云模式（供 UI / 调试用）
+  bool get isRealCloud => _cloud.isReadyForReal;
 
   /// 主入口：上传一张 [localPath] 的照片并返回不可篡改的元数据。
   ///
@@ -74,8 +77,17 @@ class CosUploader {
     final cosKey = '/original/$assessmentId/$stamp.jpg';
     final thumbKey = '/thumb/$assessmentId/$stamp.jpg';
 
-    // 6. 模拟上传延时（一次网络往返）
-    await Future.delayed(const Duration(milliseconds: 120));
+    // 6. 上传（mock / real 路由）
+    String? realUrl;
+    if (_cloud.isReadyForReal) {
+      realUrl = await _uploadToRealCos(
+        localPath: localPath,
+        cosKey: cosKey,
+      );
+    } else {
+      // mock 模式：模拟 120ms 网络延时
+      await Future.delayed(const Duration(milliseconds: 120));
+    }
 
     return PhotoMetadata(
       cosKey: cosKey,
@@ -85,7 +97,7 @@ class CosUploader {
       deviceFingerprint: fp,
       deviceModel: _deviceModel(),
       osVersion: _osVersion(),
-      appVersion: '0.1.0', // demo 写死；生产从 package_info_plus 读
+      appVersion: '0.1.0',
       capturedAt: capturedAt,
       capturedTimeSource: capturedTimeSource,
       capturedBy: capturedBy,
@@ -93,11 +105,31 @@ class CosUploader {
       qcCardId: demoQcCardId,
       qcPassed: true,
       cardDimensionCm: demoCardDimensionCm,
-      gpsStripped: true, // invariant
+      gpsStripped: true,
       mimeType: _guessMimeType(localPath),
       bytes: bytes,
       uploadedAt: DateTime.now().toUtc(),
       subjectCode: subjectCode,
+      remoteUrl: realUrl, // null 表示 mock 模式
+    );
+  }
+
+  /// 真云上传占位（V4 接入）。
+  ///
+  /// 接口契约：返回 COS 远程 URL（让 PhotoMetadata 持有）。
+  /// 当前实现抛 `UnsupportedError`，由 V4 替换。
+  Future<String> _uploadToRealCos({
+    required String localPath,
+    required String cosKey,
+  }) async {
+    // V4 计划：
+    // 1) 用 `dio.put` 发到 `https://{bucket}-{appid}.cos.{region}.myqcloud.com{cosKey}`
+    // 2) Header 带 `x-cos-security-token` (如果用临时密钥)
+    // 3) Body = 文件字节流
+    // 4) 服务端返回 200 后用 `https://...{cosKey}` 作为 remoteUrl
+    throw UnsupportedError(
+      '真 COS 上传尚未实现（V4 任务）。当前 cos_uploader 仍走 mock；'
+      '如需启用，请把 CLOUD_MODE 改为 mock 或先在 V4 接腾讯云 SDK。',
     );
   }
 
