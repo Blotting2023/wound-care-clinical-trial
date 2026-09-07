@@ -1023,6 +1023,59 @@ class DemoBackend extends Interceptor {
           'totalElements': list.length,
         }));
       }
+      // W4.6 — IRB / Sponsor / Admin 看待审 consent 列表
+      // IRB 见的是"鉴认代码 + 通道 + 签署日期"，不含真名。
+      if (method == 'GET' && path == '/consents') {
+        final perm = _checkPermission(options, Permission.auditRead);
+        if (perm != null) {
+          return handler.reject(
+              DioException(requestOptions: options, response: perm));
+        }
+        final role = _demoCtx.operatorRole ?? '';
+        final statusFilter = options.queryParameters['status'] as String?;
+        final centerFilter = options.queryParameters['centerId'] as String?;
+        final list = _consents.values.where((c) {
+          if (statusFilter != null) {
+            // W4.1 — pending 语义：未撤回、未审核(B 通道)
+            if (statusFilter == 'pending' &&
+                (c['withdrawnAt'] != null ||
+                    (c['mode'] == 'PAPER_PHOTO' &&
+                        c['reviewedByPi'] != true))) {
+              return false;
+            }
+          }
+          if (centerFilter != null && c['centerId'] != centerFilter) {
+            return false;
+          }
+          return true;
+        }).toList()
+          ..sort((a, b) =>
+              (b['signedAt'] as String).compareTo(a['signedAt'] as String));
+
+        // 按 role 决定返回字段（IRB 不能见受试者真名）
+        final out = list.map((c) {
+          final m = Map<String, dynamic>.from(c);
+          final pid = c['patientId'] as String?;
+          final p = pid != null ? _patients[pid] : null;
+          m['subjectCode'] = p?['subjectCode'];
+          m['centerId'] = c['centerId'] ?? p?['facilityId'];
+          if (role != 'PI' && role != 'SubI' && role != 'Admin') {
+            // IRB/Sponsor/CRC：返回鉴认代码，不返回真名
+            m.remove('signedByName');
+            m.remove('patientName');
+            if (p != null) {
+              p.remove('name');
+              p.remove('medicalRecordNo');
+            }
+          }
+          return m;
+        }).toList();
+
+        return handler.resolve(ok({
+          'data': out,
+          'totalElements': out.length,
+        }));
+      }
       // 切换中心 consentMode
       final centerModeMatch =
           RegExp(r'^/centers/([^/]+)/consent-mode$').firstMatch(path);

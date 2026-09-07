@@ -130,31 +130,41 @@ class RolePermissionMatrix {
           Permission.pdfExport,
         ];
       case UserRole.CRC:
+        // 按 GCP 2020+ CRC 行业指南：CRC 经 PI 书面授权可录入**非医学判断**
+        // 性字段（合并用药/合并疾病/AE 列表本身/随访日期/样本记录），但
+        // 创面疗效评估（创面打分/分级/医学判断）必须由研究者（PI/SubI）
+        // 亲自完成。V1 demo 核心字段就是创面打分，所以 CRC 暂不录数据，
+        // 保留 auditRead + pdfExport 以承担"协调查看"职责。
         return const [
-          Permission.patientCreate,
-          Permission.patientUpdateBasic,
-          Permission.assessmentCreate,
-          Permission.assessmentUpdate,
-          Permission.consentSign,
           Permission.auditRead,
           Permission.pdfExport,
-          Permission.deviceManage,
         ];
       case UserRole.Sponsor:
+        // 申办方：监查视图，不录数据。
         return const [
           Permission.auditRead,
           Permission.pdfExport,
           Permission.deviceManage,
-          Permission.dataDestroy,
         ];
       case UserRole.IRB:
+        // 伦理委员会：审阅 eConsent/SAE/方案偏离，不录数据。
         return const [
           Permission.auditRead,
           Permission.auditExport,
           Permission.consentWithdraw,
         ];
       case UserRole.Admin:
-        return const ['*']; // 通配
+        // 系统管理员：通配，但临床数据操作（assessmentCreate /
+        // patientCreate / assessmentLock）按老胡反馈不应启用，
+        // 仅承担系统配置 + 全量审计查看。
+        return const [
+          Permission.auditRead,
+          Permission.auditExport,
+          Permission.pdfExport,
+          Permission.protocolManage,
+          Permission.centerManage,
+          Permission.deviceManage,
+        ];
     }
   }
 

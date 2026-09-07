@@ -36,6 +36,38 @@ class ConsentService {
     }
   }
 
+  /// W4.6 — IRB / Sponsor / Admin 用：列出全部 consent 记录。
+  /// [status]: 可选过滤，如 'pending' 表示"未撤回 + (A通道 或 B通道已审)"。
+  /// 返回的元素 subjectCode 字段就是鉴认代码（IRB 视图必备）。
+  Future<ApiResponse<List<Map<String, dynamic>>>> listAll({
+    String? status,
+    String? centerId,
+  }) async {
+    try {
+      final response = await _apiClient.get<List<dynamic>>(
+        '/consents',
+        queryParameters: {
+          if (status != null) 'status': status,
+          if (centerId != null) 'centerId': centerId,
+        },
+      );
+      final list = response.data ?? [];
+      final items = list
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+      return ApiResponse(
+        success: true,
+        message: 'OK',
+        data: items,
+        totalCount: items.length,
+      );
+    } on DioException catch (e) {
+      return ApiResponse.error(
+        message: e.response?.data?['message'] as String? ?? '查询失败',
+      );
+    }
+  }
+
   /// 创建 consent — A / B 通道都走这个端点，body.mode 区分。
   Future<ApiResponse<ConsentForm>> create({
     required String patientId,
