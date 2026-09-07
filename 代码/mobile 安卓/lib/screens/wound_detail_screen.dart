@@ -5,9 +5,14 @@ import '../main.dart';
 import '../models/assessment.dart';
 import '../models/enums.dart';
 import '../models/wound.dart';
+import '../providers/auth_provider.dart';
 import '../providers/assessment_provider.dart';
+import '../providers/patient_provider.dart';
 import '../services/api_client.dart';
+import '../services/export_service.dart';
+import '../services/permission_service.dart';
 import '../services/wound_service.dart';
+import '../utils/retention.dart';
 import '../widgets/app_ui.dart';
 import '../widgets/assessment_photo_view.dart';
 
@@ -86,6 +91,15 @@ class _WoundDetailScreenState extends State<WoundDetailScreen>
       appBar: AppBar(
         leading: const BackButton(),
         title: Text(_wound?.displayLabel ?? '部位详情'),
+        actions: [
+          if (PermissionService.instance
+              .can(context.read<AuthProvider>().user, 'pdf:export'))
+            IconButton(
+              tooltip: '导出本部位评估',
+              icon: const Icon(Icons.ios_share_rounded),
+              onPressed: _exportWoundAssessments,
+            ),
+        ],
       ),
       body: _buildBody(history),
       bottomNavigationBar: _wound != null
@@ -122,6 +136,9 @@ class _WoundDetailScreenState extends State<WoundDetailScreen>
         children: [
           // 部位信息卡
           _buildWoundInfoCard(w),
+          const SizedBox(height: 12),
+          // W5.1 — GCP 数据留存期标识（NMPA 2022 §63：试验完成后 10 年）
+          _buildRetentionCard(history),
           const SizedBox(height: 16),
 
           // 最近一次记录（照片 + 关键数据，置顶展示）
@@ -477,6 +494,112 @@ class _WoundDetailScreenState extends State<WoundDetailScreen>
         ],
       ),
     );
+  }
+
+  /// W5.1 — GCP 数据留存期标识卡
+  /// NMPA 2022 §63：临床试验数据保存期限为试验终止后至少 10 年。
+  Widget _buildRetentionCard(List<Assessment> history) {
+    // 试验完成时间 = 最后一条评估的 createdAt（或锁定时间）
+    DateTime? trialEnd;
+    for (final a in history) {
+      final t = a.signedAt ?? a.createdAt;
+      if (trialEnd == null || t.isAfter(trialEnd)) trialEnd = t;
+    }
+    final badge = RetentionBadge(trialEnd);
+    final color = badge.color;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.lock_clock_outlined, color: color, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(badge.fullLabel,
+                    style: AppTheme.caption
+                        .copyWith(color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 2),
+                Text(
+                  '依据《医疗器械 GCP》（NMPA 2022 年第 28 号）第八章第 63 条；ALCOA+ Enduring',
+                  style: AppTheme.micro,
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              badge.shortLabel,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// W5.2 — 按当前角色脱敏导出本部位全部评估记录（CSV）。
+  Future<void> _exportWoundAssessments() async {
+    final user = context.read<AuthProvider>().user;
+    if (user == null) return;
+    final history = context.read<AssessmentProvider>().history
+        .where((a) => a.woundId == widget.woundId)
+        .toList();
+    if (history.isEmpty) {
+      _showToast('当前部位暂无评估记录可导出');
+      return;
+    }
+    final patientProvider = context.read<PatientProvider>();
+    // 构造 patientId → subjectCode 映射（V1 demo：从 patient.subjectCode 拿）
+    final subjectCodeMap = <String, String>{};
+    final centerMap = <String, String>{};
+    for (final a in history) {
+      final p = patientProvider.patients
+          .where((x) => x.id == a.patientId)
+          .firstOrNull;
+      if (p != null) {
+        subjectCodeMap[a.patientId] = p.subjectCode;
+        centerMap[a.patientId] = p.facilityId.isEmpty ? '—' : p.facilityId;
+      } else {
+        subjectCodeMap[a.patientId] = '—';
+        centerMap[a.patientId] = '—';
+      }
+    }
+    final csv = ExportService.assessmentsCsv(
+      user: user,
+      assessments: history,
+      patientSubjectCode: subjectCodeMap,
+      patientCenter: centerMap,
+    );
+    final ok = await ExportService.shareText(
+      content: csv,
+      filename: ExportService.filename(
+        role: user.role,
+        recordCount: history.length,
+      ),
+      subject: '${user.role.displayName}导出 · ${_wound?.displayLabel ?? "部位"}',
+    );
+    if (!mounted) return;
+    _showToast(ok ? '已调起系统分享菜单' : '分享失败，请稍后重试');
+  }
+
+  void _showToast(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   Widget _statusChip(AssessmentStatus status) {

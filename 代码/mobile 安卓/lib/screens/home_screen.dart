@@ -11,6 +11,7 @@ import '../services/assessment_service.dart';
 import '../services/consent_service.dart';
 import '../services/permission_service.dart';
 import '../services/wound_service.dart';
+import '../utils/retention.dart';
 import '../widgets/app_ui.dart';
 import 'home_filter_screen.dart';
 
@@ -161,6 +162,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SectionTitle('最近评估'),
                 const SizedBox(height: 12),
                 _buildRecentList(),
+                const SizedBox(height: 20),
+                _buildRetentionBanner(),
               ],
             ],
           ),
@@ -410,6 +413,49 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  /// W5.1 — GCP 数据留存期标识横幅（NMPA 2022 §63：试验完成后 10 年）
+  Widget _buildRetentionBanner() {
+    DateTime? latest;
+    for (final a in _assessments) {
+      final t = a.signedAt ?? a.createdAt;
+      if (latest == null || t.isAfter(latest)) latest = t;
+    }
+    final badge = RetentionBadge(latest);
+    final color = badge.color;
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.lock_clock_outlined, color: color, size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('GCP 数据完整性',
+                    style: AppTheme.body
+                        .copyWith(fontWeight: FontWeight.w600, color: color)),
+                const SizedBox(height: 2),
+                Text(badge.fullLabel, style: AppTheme.caption),
+                const SizedBox(height: 2),
+                Text(
+                  '依据《医疗器械 GCP》（NMPA 2022 年第 28 号）第八章第 63 条 + ALCOA+ Enduring',
+                  style: AppTheme.micro,
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
