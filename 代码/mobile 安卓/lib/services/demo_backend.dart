@@ -37,6 +37,9 @@ class DemoBackend extends Interceptor {
   final Map<String, Map<String, dynamic>> _devices = {};
   final Map<String, Map<String, dynamic>> _deviceUsageLogs = {};
 
+  /// W6 — 试验方案文档（Word/PDF 元数据，字节 V4 走 COS）。
+  final Map<String, Map<String, dynamic>> _protocolDocs = {};
+
   /// GCP W3.1 — 创面照片元数据存储（key = imageId）。
   /// 服务端做 COS 落地 + sha256 校验；demo 阶段存 in-memory 镜像。
   final Map<String, Map<String, dynamic>> _photoMetadata = {};
@@ -401,6 +404,7 @@ class DemoBackend extends Interceptor {
       'irbApprovalDate': '2026-06-15T00:00:00Z',
       'leadPiId': 'demo-physician-01',
       'leadPiName': '王立明',
+      'piContact': '139-0531-8877 · lm.wang@qlhosp.cn',
       'createdAt': now,
       'updatedAt': now,
     };
@@ -444,6 +448,21 @@ class DemoBackend extends Interceptor {
       'status': 'pending',
       'createdAt': now,
       'updatedAt': now,
+    };
+
+    // W6 — 方案文档示例：pr1 的 v1.0 主方案 PDF
+    _protocolDocs['pd1'] = {
+      'id': 'pd1',
+      'protocolId': 'pr1',
+      'fileName': 'WOUND-2026-A_v1.0_主方案.pdf',
+      'fileExt': 'pdf',
+      'fileSizeBytes': 2516582,
+      'version': '1.0',
+      'note': 'IRB 批件号 SDQL-IRB-2026-018',
+      'uploadedBy': 'demo-sponsor-01',
+      'uploadedByName': '申办方',
+      'uploadedAt': '2026-06-20T09:00:00Z',
+      'remoteUrl': null,
     };
 
     // 5 个试用器械 — 2 个已分配给 demo 患者，3 个在仓库
@@ -1119,6 +1138,178 @@ class DemoBackend extends Interceptor {
           'data': _protocols.values.toList(),
           'totalElements': _protocols.length,
         }));
+      }
+      // W6 — 新建研究中心（PI/Admin）
+      if (method == 'POST' && path == '/centers') {
+        final perm = _checkPermission(options, Permission.centerManage);
+        if (perm != null) {
+          return handler.reject(
+              DioException(requestOptions: options, response: perm));
+        }
+        _ensureSeeded();
+        final body =
+            (options.data as Map?)?.cast<String, dynamic>() ?? {};
+        final now = _nowIso();
+        final id = _newId('c');
+        final c = <String, dynamic>{
+          'id': id,
+          'code': body['code'] ?? '',
+          'name': body['name'] ?? '',
+          'department': body['department'] ?? '',
+          'address': body['address'],
+          'irbNumber': body['irbNumber'],
+          'irbApprovalDate': body['irbApprovalDate'],
+          'leadPiId': null,
+          'leadPiName': body['leadPiName'],
+          'piContact': body['piContact'],
+          'consentMode': ConsentMode.PAPER_PHOTO.name,
+          'consentModeSetAt': null,
+          'consentModeSetBy': null,
+          'createdAt': now,
+          'updatedAt': now,
+        };
+        _centers[id] = c;
+        AuditLogger.I.record(
+          tableName: 'center',
+          recordId: id,
+          opType: AuditOpType.create,
+          fieldName: 'code',
+          afterValue: c['code'],
+          ctx: _demoCtx,
+          reason: '新增研究中心',
+        );
+        return handler.resolve(ok(c, statusCode: 201));
+      }
+      // W6 — 编辑中心负责人 / 联系方式（PI/Admin），写审计
+      final centerPutMatch =
+          RegExp(r'^/centers/([^/]+)$').firstMatch(path);
+      if (centerPutMatch != null && method == 'PUT') {
+        final perm = _checkPermission(options, Permission.centerManage);
+        if (perm != null) {
+          return handler.reject(
+              DioException(requestOptions: options, response: perm));
+        }
+        _ensureSeeded();
+        final cid = centerPutMatch.group(1)!;
+        final c = _centers[cid];
+        if (c == null) {
+          return handler.reject(DioException(
+              requestOptions: options,
+              response:
+                  ok({'message': '中心不存在'}, statusCode: 404)));
+        }
+        final body =
+            (options.data as Map?)?.cast<String, dynamic>() ?? {};
+        for (final entry in body.entries) {
+          final before = c[entry.key];
+          final after = entry.value;
+          if (before == after) continue;
+          AuditLogger.I.record(
+            tableName: 'center',
+            recordId: cid,
+            opType: AuditOpType.update,
+            fieldName: entry.key,
+            beforeValue: before,
+            afterValue: after,
+            ctx: _demoCtx,
+            reason: '编辑中心信息',
+          );
+        }
+        final merged = {...c, ...body, 'id': cid, 'updatedAt': _nowIso()};
+        _centers[cid] = merged;
+        return handler.resolve(ok(merged));
+      }
+      // W6 — 新建试验方案（PI/Admin）
+      if (method == 'POST' && path == '/protocols') {
+        final perm = _checkPermission(options, Permission.protocolManage);
+        if (perm != null) {
+          return handler.reject(
+              DioException(requestOptions: options, response: perm));
+        }
+        _ensureSeeded();
+        final body =
+            (options.data as Map?)?.cast<String, dynamic>() ?? {};
+        final now = _nowIso();
+        final id = _newId('pr');
+        final p = <String, dynamic>{
+          'id': id,
+          'code': body['code'] ?? '',
+          'name': body['name'] ?? '',
+          'version': body['version'] ?? '1.0',
+          'sponsor': body['sponsor'] ?? '',
+          'phase': body['phase'] ?? 'pilot',
+          'startDate': body['startDate'] ?? now,
+          'endDate': body['endDate'],
+          'status': 'active',
+          'summary': body['summary'],
+          'createdAt': now,
+          'updatedAt': now,
+        };
+        _protocols[id] = p;
+        AuditLogger.I.record(
+          tableName: 'protocol',
+          recordId: id,
+          opType: AuditOpType.create,
+          fieldName: 'code',
+          afterValue: p['code'],
+          ctx: _demoCtx,
+          reason: '新建试验方案',
+        );
+        return handler.resolve(ok(p, statusCode: 201));
+      }
+      // W6 — 方案文档：列表（登录即可见）+ 上传（PI/Admin）
+      final protocolDocsMatch =
+          RegExp(r'^/protocols/([^/]+)/documents$').firstMatch(path);
+      if (protocolDocsMatch != null) {
+        _ensureSeeded();
+        final prid = protocolDocsMatch.group(1)!;
+        if (method == 'GET') {
+          final list = _protocolDocs.values
+              .where((d) => d['protocolId'] == prid)
+              .toList()
+            ..sort((a, b) => (b['uploadedAt'] as String)
+                .compareTo(a['uploadedAt'] as String));
+          return handler.resolve(ok({
+            'data': list,
+            'totalElements': list.length,
+          }));
+        }
+        if (method == 'POST') {
+          final perm = _checkPermission(options, Permission.protocolManage);
+          if (perm != null) {
+            return handler.reject(
+                DioException(requestOptions: options, response: perm));
+          }
+          final body =
+              (options.data as Map?)?.cast<String, dynamic>() ?? {};
+          final now = _nowIso();
+          final id = _newId('pd');
+          final doc = <String, dynamic>{
+            'id': id,
+            'protocolId': prid,
+            'fileName': body['fileName'] ?? '未命名',
+            'fileExt':
+                (body['fileExt'] as String? ?? '').toLowerCase(),
+            'fileSizeBytes': body['fileSizeBytes'] ?? 0,
+            'version': body['version'] ?? '1.0',
+            'note': body['note'],
+            'uploadedBy': _demoCtx.operatorId,
+            'uploadedByName': _demoCtx.operatorName,
+            'uploadedAt': now,
+            'remoteUrl': null, // V4 接 COS 后填充
+          };
+          _protocolDocs[id] = doc;
+          AuditLogger.I.record(
+            tableName: 'protocol_document',
+            recordId: id,
+            opType: AuditOpType.create,
+            fieldName: 'fileName',
+            afterValue: doc['fileName'],
+            ctx: _demoCtx,
+            reason: '上传方案文档（${doc['version']} 版）',
+          );
+          return handler.resolve(ok(doc, statusCode: 201));
+        }
       }
       if (method == 'GET' && path == '/centers') {
         _ensureSeeded();

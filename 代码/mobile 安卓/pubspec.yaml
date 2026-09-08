@@ -29,6 +29,7 @@ dependencies:
   mobile_scanner: ^5.2.3
   crypto: ^3.0.5
   share_plus: ^10.1.4
+  file_picker: ^8.1.7
 
 dev_dependencies:
   flutter_test:

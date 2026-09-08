@@ -22,6 +22,9 @@ class ResearchCenter {
   final DateTime? irbApprovalDate;
   final String? leadPiId;
   final String? leadPiName;
+
+  /// W6 — 中心负责人（PI）联系电话/邮箱等联系方式，自由格式。
+  final String? piContact;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -41,6 +44,7 @@ class ResearchCenter {
     this.irbApprovalDate,
     this.leadPiId,
     this.leadPiName,
+    this.piContact,
     required this.createdAt,
     required this.updatedAt,
     this.consentMode = ConsentMode.PAPER_PHOTO,
@@ -61,6 +65,7 @@ class ResearchCenter {
           : null,
       leadPiId: json['leadPiId'] as String?,
       leadPiName: json['leadPiName'] as String?,
+      piContact: json['piContact'] as String?,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
       consentMode: ConsentMode.tryParse(json['consentMode'] as String?) ??
@@ -82,6 +87,7 @@ class ResearchCenter {
         'irbApprovalDate': irbApprovalDate?.toIso8601String(),
         'leadPiId': leadPiId,
         'leadPiName': leadPiName,
+        'piContact': piContact,
         'createdAt': createdAt.toIso8601String(),
         'updatedAt': updatedAt.toIso8601String(),
         'consentMode': consentMode.name,
@@ -99,6 +105,7 @@ class ResearchCenter {
     DateTime? irbApprovalDate,
     String? leadPiId,
     String? leadPiName,
+    String? piContact,
     DateTime? createdAt,
     DateTime? updatedAt,
     ConsentMode? consentMode,
@@ -115,6 +122,7 @@ class ResearchCenter {
       irbApprovalDate: irbApprovalDate ?? this.irbApprovalDate,
       leadPiId: leadPiId ?? this.leadPiId,
       leadPiName: leadPiName ?? this.leadPiName,
+      piContact: piContact ?? this.piContact,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       consentMode: consentMode ?? this.consentMode,

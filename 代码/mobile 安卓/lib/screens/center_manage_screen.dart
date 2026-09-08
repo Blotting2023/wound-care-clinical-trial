@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../config/app_theme.dart';
 import '../models/center.dart';
+import '../models/user_role.dart';
+import '../providers/auth_provider.dart';
+import '../services/permission_service.dart';
 import '../services/trial_service.dart';
 import '../services/api_client.dart';
 import '../widgets/app_ui.dart';
@@ -21,6 +25,9 @@ class _CenterManageScreenState extends State<CenterManageScreen> {
   List<ResearchCenter> _items = [];
   bool _loading = true;
   String? _error;
+
+  bool get _canManage => PermissionService.instance
+      .can(context.read<AuthProvider>().user, Permission.centerManage);
 
   @override
   void initState() {
@@ -58,6 +65,98 @@ class _CenterManageScreenState extends State<CenterManageScreen> {
     }
   }
 
+  /// W6 — 编辑负责人 / 联系方式（PI/Admin）。
+  Future<void> _openEdit(ResearchCenter c) async {
+    final piCtrl = TextEditingController(text: c.leadPiName ?? '');
+    final contactCtrl = TextEditingController(text: c.piContact ?? '');
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(
+            20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('编辑 ${c.name}', style: AppTheme.body.copyWith(
+                fontWeight: FontWeight.w600, fontSize: 16)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: piCtrl,
+              decoration: const InputDecoration(
+                labelText: '负责人（主要研究者）',
+                isDense: true,
+                border: OutlineInputBorder(),
+              ),
+              style: AppTheme.body,
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: contactCtrl,
+              decoration: const InputDecoration(
+                labelText: '联系方式（电话 / 邮箱）',
+                hintText: '139-xxxx-xxxx · name@hospital.cn',
+                isDense: true,
+                border: OutlineInputBorder(),
+              ),
+              style: AppTheme.body,
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: const Text('取消'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.actionBlue,
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: const Text('保存'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+    if (saved != true || !mounted) return;
+    final contact = contactCtrl.text.trim();
+    final res = await _service.updateCenter(
+      c.id,
+      leadPiName: piCtrl.text.trim(),
+      piContact: contact.isEmpty ? null : contact,
+    );
+    if (!mounted) return;
+    if (res.success && res.data != null) {
+      setState(() {
+        _items = [
+          for (final it in _items)
+            if (it.id == c.id) res.data! else it,
+        ];
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('中心信息已保存（已记入审计）')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('保存失败：${res.message}')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -81,7 +180,11 @@ class _CenterManageScreenState extends State<CenterManageScreen> {
                       child: ListView.builder(
                         padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
                         itemCount: _items.length,
-                        itemBuilder: (_, i) => _CenterCard(c: _items[i]),
+                        itemBuilder: (_, i) => _CenterCard(
+                          c: _items[i],
+                          canManage: _canManage,
+                          onEdit: () => _openEdit(_items[i]),
+                        ),
                       ),
                     ),
     );
@@ -131,7 +234,9 @@ class _CenterManageScreenState extends State<CenterManageScreen> {
 
 class _CenterCard extends StatelessWidget {
   final ResearchCenter c;
-  const _CenterCard({required this.c});
+  final bool canManage;
+  final VoidCallback? onEdit;
+  const _CenterCard({required this.c, this.canManage = false, this.onEdit});
 
   @override
   Widget build(BuildContext context) {
@@ -179,17 +284,60 @@ class _CenterCard extends StatelessWidget {
                 const SizedBox(width: 4),
                 Expanded(
                   child: Text(
-                    c.leadPiName == null
+                    c.leadPiName == null || c.leadPiName!.isEmpty
                         ? 'PI 待指派'
                         : ('PI ${c.leadPiName}'),
                     style: AppTheme.micro
                         .copyWith(color: AppTheme.textSecondary),
                   ),
                 ),
-                if ((c.irbNumber ?? '').isNotEmpty)
-                  Text('IRB ${c.irbNumber}', style: AppTheme.micro),
+                if (canManage && onEdit != null)
+                  GestureDetector(
+                    onTap: onEdit,
+                    behavior: HitTestBehavior.opaque,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.edit_outlined,
+                              size: 13, color: AppTheme.actionBlue),
+                          const SizedBox(width: 2),
+                          Text('编辑',
+                              style: AppTheme.micro.copyWith(
+                                  color: AppTheme.actionBlue)),
+                        ],
+                      ),
+                    ),
+                  ),
               ],
             ),
+            // W6 — 负责人联系方式
+            if ((c.piContact ?? '').isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const Icon(Icons.call_outlined,
+                      size: 14, color: AppTheme.textSecondary),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(c.piContact!,
+                        style: AppTheme.micro
+                            .copyWith(color: AppTheme.textSecondary)),
+                  ),
+                ],
+              ),
+            ] else if (c.leadPiName != null &&
+                c.leadPiName!.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text('联系方式待补录',
+                  style: AppTheme.micro.copyWith(
+                      color: AppTheme.textHint, fontStyle: FontStyle.italic)),
+            ],
+            if ((c.irbNumber ?? '').isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text('IRB ${c.irbNumber}', style: AppTheme.micro),
+            ],
           ],
         ),
       ),
@@ -214,6 +362,7 @@ class _CenterCreateScreenState extends State<_CenterCreateScreen> {
   final _address = TextEditingController();
   final _irb = TextEditingController();
   final _pi = TextEditingController();
+  final _piContact = TextEditingController();
   bool _busy = false;
 
   @override
@@ -224,6 +373,7 @@ class _CenterCreateScreenState extends State<_CenterCreateScreen> {
     _address.dispose();
     _irb.dispose();
     _pi.dispose();
+    _piContact.dispose();
     super.dispose();
   }
 
@@ -237,6 +387,8 @@ class _CenterCreateScreenState extends State<_CenterCreateScreen> {
       address: _address.text.trim().isEmpty ? null : _address.text.trim(),
       irbNumber: _irb.text.trim().isEmpty ? null : _irb.text.trim(),
       leadPiName: _pi.text.trim().isEmpty ? null : _pi.text.trim(),
+      piContact:
+          _piContact.text.trim().isEmpty ? null : _piContact.text.trim(),
     );
     if (!mounted) return;
     setState(() => _busy = false);
@@ -286,6 +438,7 @@ class _CenterCreateScreenState extends State<_CenterCreateScreen> {
             _field(_address, '医院地址', '可选'),
             _field(_irb, 'IRB 编号', '选填'),
             _field(_pi, '主要研究者', '选填'),
+            _field(_piContact, '负责人联系方式', '电话 / 邮箱，选填'),
             const SizedBox(height: 24),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
