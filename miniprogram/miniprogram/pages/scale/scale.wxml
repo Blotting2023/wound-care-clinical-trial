@@ -9,7 +9,7 @@
       <text class="label">宽度 (cm)</text>
       <input type="digit" value="{{widthCm}}" data-field="widthCm" bindinput="onNumInput" placeholder="0.0" />
     </view>
-    <view class="auto-note">面积自动计算：{{lengthCm && widthCm ? (lengthCm * widthCm).toFixed(2) + ' cm²' : '—'}} cm²</view>
+    <view class="auto-note">面积自动计算：{{areaText}}</view>
   </view>
 
   <view class="card">

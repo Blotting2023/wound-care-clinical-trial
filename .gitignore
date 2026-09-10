@@ -75,3 +75,11 @@ captures/
 *.bak
 *.log
 *~
+
+# ===== 微信小程序代码上传私钥（绝不能进仓库）=====
+private.*.key
+*.key
+
+# ===== Node =====
+node_modules/
+package-lock.json

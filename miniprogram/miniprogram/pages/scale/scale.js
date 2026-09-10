@@ -15,6 +15,7 @@ Page({
     crfFields: CRF_FIELDS,
     crf: { medication: 'ND', disease: 'ND', ae: 'ND' },
     lengthCm: '', widthCm: '',
+    areaText: '—', // WXML 不支持方法调用，面积文案在 JS 里算
     // VSS 量表（简化 4 项 0-3 分）
     vss: [
       { key: 'pigment', label: '色素沉着', score: 0 },
@@ -42,7 +43,11 @@ Page({
 
   onNumInput(e) {
     const f = e.currentTarget.dataset.field;
-    this.setData({ [f]: e.detail.value });
+    const patch = { [f]: e.detail.value };
+    const l = Number(f === 'lengthCm' ? e.detail.value : this.data.lengthCm);
+    const w = Number(f === 'widthCm' ? e.detail.value : this.data.widthCm);
+    patch.areaText = l > 0 && w > 0 ? `${(l * w).toFixed(2)} cm²` : '—';
+    this.setData(patch);
   },
 
   onCrfPick(e) {
