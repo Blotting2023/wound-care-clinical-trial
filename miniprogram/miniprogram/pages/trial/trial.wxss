@@ -1,0 +1,25 @@
+.tabs { display: flex; padding: 20rpx 32rpx; }
+.tab { margin-right: 32rpx; font-size: 30rpx; color: #8E8E93; padding-bottom: 8rpx; }
+.tab.on { color: #0066CC; font-weight: 700; border-bottom: 4rpx solid #0066CC; }
+.c-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8rpx; }
+.c-name { font-size: 30rpx; font-weight: 600; }
+.edit-link { color: #0066CC; font-size: 24rpx; }
+.c-line { display: block; font-size: 24rpx; color: #6B6B70; margin-top: 8rpx; }
+.contact { color: #0066CC; }
+.doc-list { margin-top: 20rpx; border-top: 1rpx solid #F0F0F2; padding-top: 16rpx; }
+.doc-title { font-size: 26rpx; font-weight: 600; margin-bottom: 12rpx; }
+.doc-item { display: flex; align-items: center; padding: 12rpx 0; }
+.doc-icon {
+  width: 64rpx; height: 64rpx; border-radius: 12rpx; background: rgba(0,102,204,.1);
+  color: #0066CC; font-size: 22rpx; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; margin-right: 16rpx;
+}
+.doc-icon.pdf { background: rgba(217,48,37,.1); color: #D93025; }
+.doc-main { flex: 1; display: flex; flex-direction: column; }
+.doc-name { font-size: 26rpx; }
+.doc-meta { font-size: 20rpx; color: #8E8E93; margin-top: 4rpx; }
+.doc-ver { font-size: 20rpx; color: #8E8E93; }
+.doc-note { font-size: 20rpx; color: #8E8E93; margin-top: 12rpx; }
+.mask { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: flex-end; z-index: 10; }
+.sheet { width: 100%; background: #fff; border-radius: 32rpx 32rpx 0 0; padding: 40rpx 40rpx calc(40rpx + env(safe-area-inset-bottom)); }
+.sheet-title { font-size: 32rpx; font-weight: 700; margin-bottom: 20rpx; text-align: center; }

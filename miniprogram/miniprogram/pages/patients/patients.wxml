@@ -1,0 +1,47 @@
+<view class="wrap">
+  <view class="toolbar">
+    <text class="title">{{mode === 'pick' ? '选择受试者' : '受试者列表'}}</text>
+    <text wx:if="{{canCreate}}" class="add-link" bindtap="openCreate">＋ 新建</text>
+  </view>
+
+  <view class="card" wx:if="{{patients.length === 0}}"><view class="empty">暂无受试者，点右上角新建</view></view>
+
+  <view class="card" wx:for="{{patients}}" wx:key="_id" bindtap="tapPatient" data-id="{{item._id}}">
+    <view class="list-item">
+      <view class="li-main">
+        <view class="li-title-row">
+          <text class="li-title">{{item.subjectCode}}</text>
+          <text class="tag {{item.consentStatus === 'signed' ? 'tag-green' : 'tag-orange'}}">
+            {{item.consentStatus === 'signed' ? '已知情' : '待知情'}}
+          </text>
+        </view>
+        <text class="li-sub">{{item.gender}}{{item.birthYear ? ' · ' + item.birthYear + '年生' : ''}} · 病案号 {{item.mrn || item.mrnMasked}}</text>
+      </view>
+      <text class="arrow">›</text>
+    </view>
+  </view>
+
+  <!-- 新建受试者弹层 -->
+  <view wx:if="{{showCreate}}" class="mask" bindtap="closeCreate">
+    <view class="sheet" catchtap="">
+      <view class="sheet-title">新建受试者档案</view>
+      <view class="input-row">
+        <text class="label">病案号</text>
+        <input value="{{form.mrn}}" data-field="mrn" bindinput="onFormInput" placeholder="医院病案号" />
+      </view>
+      <view class="input-row">
+        <text class="label">性别</text>
+        <view class="gender-pick">
+          <text class="gender {{form.gender === '男' ? 'on' : ''}}" bindtap="onGender" data-g="男">男</text>
+          <text class="gender {{form.gender === '女' ? 'on' : ''}}" bindtap="onGender" data-g="女">女</text>
+        </view>
+      </view>
+      <view class="input-row">
+        <text class="label">出生年份</text>
+        <input type="number" value="{{form.birthYear}}" data-field="birthYear" bindinput="onFormInput" placeholder="如 1972" />
+      </view>
+      <view class="privacy-note">真名不入档：仅病案号 + 鉴认代码（GCP 受试者鉴认代码要求）</view>
+      <button class="btn-primary" bindtap="submitCreate">建档</button>
+    </view>
+  </view>
+</view>

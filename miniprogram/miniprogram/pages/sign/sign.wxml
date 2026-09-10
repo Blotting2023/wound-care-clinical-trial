@@ -1,0 +1,10 @@
+<view class="wrap">
+  <view class="card sign-card">
+    <text class="sign-icon">✍️</text>
+    <text class="sign-title">电子签名锁定</text>
+    <text class="sign-meaning">签名含义：本人确认本次评估记录准确、完整、可溯源（21 CFR Part 11 §11.50）</text>
+    <input class="pin-input" type="password" maxlength="6" value="{{pin}}" bindinput="onPin" placeholder="输入 6 位 PIN" />
+    <button class="btn-primary" disabled="{{busy}}" bindtap="doSign">{{busy ? '签名中…' : '确认签名并锁定'}}</button>
+    <text class="sign-note">锁定后临床字段不可修改；数据留存 10 年（NMPA §63）</text>
+  </view>
+</view>

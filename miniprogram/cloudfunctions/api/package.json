@@ -1,0 +1,10 @@
+{
+  "name": "api",
+  "version": "2.0.0",
+  "description": "创面评估系统 V1 — 小程序云函数（PG + RBAC + 审计哈希链）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3",
+    "@cloudbase/node-sdk": "^3.18.3"
+  }
+}

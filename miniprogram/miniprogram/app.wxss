@@ -1,0 +1,71 @@
+/* 全局样式 — 对齐 Apple HIG #00002 / Action Blue #0066CC */
+page {
+  background: #F5F5F7;
+  font-family: -apple-system, "Noto Sans SC", sans-serif;
+  color: #1C1C1E;
+  font-size: 28rpx;
+}
+
+.card {
+  background: #FFFFFF;
+  border-radius: 24rpx;
+  padding: 28rpx;
+  margin: 0 24rpx 24rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+}
+
+.btn-primary {
+  background: #0066CC;
+  color: #fff;
+  border-radius: 48rpx;
+  font-size: 30rpx;
+  padding: 8rpx 0;
+}
+.btn-primary::after { border: none; }
+.btn-primary[disabled] { opacity: 0.5; }
+
+.btn-ghost {
+  background: #fff;
+  color: #0066CC;
+  border: 2rpx solid #0066CC;
+  border-radius: 48rpx;
+  font-size: 30rpx;
+  padding: 8rpx 0;
+}
+.btn-ghost::after { border: none; }
+
+.tag {
+  display: inline-block;
+  font-size: 20rpx;
+  padding: 4rpx 14rpx;
+  border-radius: 8rpx;
+  margin-right: 8rpx;
+}
+.tag-blue { background: rgba(0, 102, 204, 0.1); color: #0066CC; }
+.tag-green { background: rgba(52, 199, 89, 0.12); color: #34C759; }
+.tag-orange { background: rgba(255, 149, 0, 0.12); color: #FF9500; }
+.tag-purple { background: rgba(175, 82, 222, 0.12); color: #AF52DE; }
+.tag-gray { background: rgba(142, 142, 147, 0.12); color: #8E8E93; }
+
+.section-title {
+  font-size: 30rpx;
+  font-weight: 600;
+  margin: 24rpx 32rpx 16rpx;
+  color: #1C1C1E;
+}
+
+.input-row {
+  display: flex;
+  align-items: center;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #F0F0F2;
+}
+.input-row .label { width: 180rpx; color: #8E8E93; font-size: 26rpx; }
+.input-row input { flex: 1; font-size: 28rpx; }
+
+.empty {
+  text-align: center;
+  color: #8E8E93;
+  font-size: 26rpx;
+  padding: 60rpx 0;
+}

@@ -1,0 +1,17 @@
+<view class="wrap">
+  <view class="card">
+    <view class="card-title">创面照片（影像源数据）</view>
+    <view wx:if="{{!tempFile}}" class="shot-empty" bindtap="takePhoto">
+      <text class="shot-icon">📷</text>
+      <text class="shot-text">点击拍照或从相册选择</text>
+    </view>
+    <block wx:else>
+      <image class="preview" src="{{tempFile}}" mode="aspectFit" bindtap="takePhoto" />
+      <view class="device-line">设备：{{deviceModel}}</view>
+      <view class="exif-note">端上压缩已剥离 GPS 等隐私元数据（PIPL §6），拍摄设备型号入档可溯源</view>
+    </block>
+  </view>
+  <view class="card">
+    <button class="btn-primary" disabled="{{!tempFile}}" bindtap="submit">下一步：填写评估数据</button>
+  </view>
+</view>

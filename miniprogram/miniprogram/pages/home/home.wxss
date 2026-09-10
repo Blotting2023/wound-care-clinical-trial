@@ -1,0 +1,23 @@
+.wrap { padding: 24rpx 0 60rpx; }
+.header { display: flex; justify-content: space-between; align-items: center; padding: 8rpx 32rpx 24rpx; }
+.hello { display: flex; align-items: center; }
+.hi { font-size: 34rpx; font-weight: 700; margin-right: 16rpx; }
+.role-tag { font-size: 20rpx; padding: 4rpx 14rpx; border-radius: 8rpx; }
+.me-link { color: #0066CC; font-size: 26rpx; }
+.stat-grid { display: flex; margin-bottom: 16rpx; }
+.stat { flex: 1; display: flex; flex-direction: column; align-items: center; }
+.num { font-size: 44rpx; font-weight: 700; color: #0066CC; }
+.lbl { font-size: 22rpx; color: #8E8E93; margin-top: 4rpx; }
+.ro-note { font-size: 22rpx; color: #8E8E93; text-align: center; padding: 12rpx 0 4rpx; }
+.card-title { font-size: 30rpx; font-weight: 600; margin-bottom: 12rpx; }
+.list-item { display: flex; align-items: center; justify-content: space-between; padding: 20rpx 0; border-bottom: 1rpx solid #F5F5F7; }
+.list-item:last-child { border-bottom: none; }
+.li-main { display: flex; flex-direction: column; flex: 1; }
+.li-title-row { display: flex; align-items: center; justify-content: space-between; }
+.li-title { font-size: 28rpx; font-weight: 500; }
+.li-sub { font-size: 22rpx; color: #8E8E93; margin-top: 6rpx; }
+.arrow { color: #C7C7CC; font-size: 36rpx; margin-left: 12rpx; }
+.note-card .note { font-size: 24rpx; color: #8E8E93; line-height: 1.6; }
+.retention { border-left: 6rpx solid #34C759; }
+.retention-title { font-size: 26rpx; font-weight: 600; color: #34C759; display: block; }
+.retention-body { font-size: 24rpx; color: #6B6B70; margin-top: 8rpx; display: block; line-height: 1.6; }

@@ -1,0 +1,17 @@
+.head-card { display: flex; align-items: center; }
+.avatar {
+  width: 110rpx; height: 110rpx; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 44rpx; font-weight: 700; margin-right: 24rpx;
+}
+.head-main { display: flex; flex-direction: column; }
+.d-name { font-size: 34rpx; font-weight: 700; }
+.d-role { font-size: 24rpx; margin-top: 8rpx; }
+.card-title { font-size: 28rpx; font-weight: 600; margin-bottom: 16rpx; }
+.perm-wrap { display: flex; flex-wrap: wrap; }
+.perm-wrap .tag { margin-bottom: 12rpx; }
+.perm-note { font-size: 20rpx; color: #8E8E93; }
+.menu-item { display: flex; justify-content: space-between; align-items: center; padding: 24rpx 0; border-bottom: 1rpx solid #F5F5F7; font-size: 28rpx; }
+.menu-item:last-child { border-bottom: none; }
+.arrow { color: #C7C7CC; }
+.foot { text-align: center; font-size: 20rpx; color: #C7C7CC; padding: 24rpx 0 60rpx; }

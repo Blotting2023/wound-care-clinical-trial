@@ -1,0 +1,13 @@
+.head-card .code-row { display: flex; align-items: center; justify-content: space-between; }
+.head-card .code { font-size: 44rpx; font-weight: 700; color: #0066CC; }
+.head-card .meta { display: block; font-size: 24rpx; color: #8E8E93; margin-top: 8rpx; }
+.tip { font-size: 22rpx; color: #8E8E93; text-align: center; margin-top: 12rpx; }
+.list-item { display: flex; align-items: center; justify-content: space-between; }
+.li-main { display: flex; flex-direction: column; flex: 1; }
+.li-title { font-size: 30rpx; font-weight: 500; }
+.li-sub { font-size: 22rpx; color: #8E8E93; margin-top: 4rpx; }
+.arrow { color: #C7C7CC; font-size: 36rpx; margin-left: 12rpx; }
+
+.mask { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: flex-end; z-index: 10; }
+.sheet { width: 100%; background: #fff; border-radius: 32rpx 32rpx 0 0; padding: 40rpx 40rpx calc(40rpx + env(safe-area-inset-bottom)); }
+.sheet-title { font-size: 32rpx; font-weight: 700; margin-bottom: 20rpx; text-align: center; }

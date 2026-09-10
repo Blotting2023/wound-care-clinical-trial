@@ -1,0 +1,17 @@
+{
+  "version": "2.0",
+  "envId": "wound-gcp-d2gh9r44ta15f1664",
+  "region": "ap-shanghai",
+  "functionRoot": "./cloudfunctions",
+  "functions": [
+    {
+      "name": "api",
+      "timeout": 20,
+      "runtime": "Nodejs18.15",
+      "installDependency": true,
+      "envVariables": {
+        "ALLOW_DEBUG_AUTH": "1"
+      }
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+<view class="wrap">
+  <view class="section-title">评估历史</view>
+
+  <view class="card" wx:if="{{assessments.length === 0}}"><view class="empty">暂无评估记录</view></view>
+
+  <view class="card" wx:for="{{assessments}}" wx:key="_id">
+    <view class="asm-head">
+      <text class="asm-date">{{item.createdAt}}</text>
+      <text class="tag {{item.status === 'locked' ? 'tag-green' : 'tag-orange'}}">{{item.status === 'locked' ? '已锁定' : '待签名'}}</text>
+    </view>
+    <view class="metric-row">
+      <view class="metric"><text class="m-num">{{item.lengthCm}}</text><text class="m-lbl">长 (cm)</text></view>
+      <view class="metric"><text class="m-num">{{item.widthCm}}</text><text class="m-lbl">宽 (cm)</text></view>
+      <view class="metric"><text class="m-num">{{item.areaCm2}}</text><text class="m-lbl">面积 (cm²)</text></view>
+      <view class="metric" wx:if="{{item.vssScore !== null}}"><text class="m-num">{{item.vssScore}}</text><text class="m-lbl">VSS</text></view>
+    </view>
+    <image wx:if="{{item.photoFileId}}" class="photo" src="{{item.photoFileId}}" mode="aspectFill" bindtap="previewPhoto" data-fid="{{item.photoFileId}}" />
+    <view class="crf-line" wx:if="{{item.crf && item.crf.medication}}">合并用药：{{item.crf.medication}}<text wx:if="{{item.crf.ae}}"> · AE：{{item.crf.ae}}</text></view>
+    <view wx:if="{{item.status === 'locked'}}" class="lock-line">
+      🔒 {{item.lockedBy}} 于 {{item.lockedAt}} 签名锁定 · 留存至 {{item.retentionUntil}}
+    </view>
+    <button wx:elif="{{canLock}}" class="btn-primary sm" bindtap="goSign" data-id="{{item._id}}">PIN 签名锁定</button>
+  </view>
+
+  <view class="card" wx:if="{{canAssess}}">
+    <button class="btn-primary" bindtap="goCapture">＋ 新增评估记录</button>
+  </view>
+  <view class="card" wx:elif="{{!canAssess}}">
+    <view class="empty">CRC 只读：评估须由研究者完成</view>
+  </view>
+</view>

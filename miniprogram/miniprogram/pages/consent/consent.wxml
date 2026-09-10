@@ -1,0 +1,49 @@
+<view class="wrap">
+  <!-- 上传（PI/SubI/CRC） -->
+  <block wx:if="{{role !== 'Sponsor' && role !== 'IRB'}}">
+    <view class="card">
+      <view class="card-title">上传纸质知情同意书</view>
+      <view wx:if="{{!tempFile}}" class="shot-empty" bindtap="choosePhoto">
+        <text class="shot-icon">📄</text>
+        <text class="shot-text">拍照 / 选择知情书照片</text>
+      </view>
+      <image wx:else class="preview" src="{{tempFile}}" mode="aspectFit" bindtap="choosePhoto" />
+      <picker mode="selector" range="{{patients}}" range-key="subjectCode" bindchange="onPatient">
+        <view class="input-row">
+          <text class="label">受试者</text>
+          <text class="pick-value">{{patients.length ? patients[patientIndex].subjectCode : '（先建档）'}}</text>
+        </view>
+      </picker>
+      <picker mode="date" bindchange="onDate">
+        <view class="input-row">
+          <text class="label">签署日期</text>
+          <text class="pick-value">{{signedDate || '选择日期'}}</text>
+        </view>
+      </picker>
+      <view class="input-row">
+        <text class="label">见证人</text>
+        <input value="{{witnessName}}" bindinput="onWitness" placeholder="见证人姓名" />
+      </view>
+      <button class="btn-primary" style="margin-top:24rpx" disabled="{{busy}}" bindtap="submitUpload">提交待 PI 审核</button>
+    </view>
+  </block>
+
+  <!-- 列表（全角色，IRB 只读查看） -->
+  <view class="section-title">知情同意记录</view>
+  <view class="card" wx:if="{{list.length === 0}}"><view class="empty">暂无记录</view></view>
+  <view class="card" wx:for="{{list}}" wx:key="_id">
+    <view class="c-head">
+      <text class="c-status tag {{item.status === 'signed' ? 'tag-green' : (item.status === 'rejected' ? 'tag-gray' : 'tag-orange')}}">
+        {{item.status === 'signed' ? '已签署' : (item.status === 'rejected' ? '已驳回' : '待 PI 审核')}}
+      </text>
+      <text class="c-time">{{item.uploadedAt}}</text>
+    </view>
+    <image class="c-photo" src="{{item.photoFileId}}" mode="aspectFill" bindtap="previewPhoto" data-fid="{{item.photoFileId}}" />
+    <text class="c-meta">见证人：{{item.witnessName || '—'}} · 签署：{{item.signedDate || '—'}}</text>
+    <text wx:if="{{item.reviewNote}}" class="c-meta">审核意见：{{item.reviewNote}}</text>
+    <view wx:if="{{isPI && item.status === 'pending_review'}}" class="c-actions">
+      <button class="btn-primary half" bindtap="review" data-id="{{item._id}}" data-approve="{{true}}">通过</button>
+      <button class="btn-ghost half" bindtap="review" data-id="{{item._id}}" data-approve="{{false}}">驳回</button>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,26 @@
+.toolbar { display: flex; justify-content: space-between; align-items: center; padding: 8rpx 32rpx 20rpx; }
+.title { font-size: 34rpx; font-weight: 700; }
+.add-link { color: #0066CC; font-size: 28rpx; }
+.list-item { display: flex; align-items: center; justify-content: space-between; }
+.li-main { display: flex; flex-direction: column; flex: 1; }
+.li-title-row { display: flex; align-items: center; justify-content: space-between; }
+.li-title { font-size: 30rpx; font-weight: 600; }
+.li-sub { font-size: 24rpx; color: #8E8E93; margin-top: 6rpx; }
+.arrow { color: #C7C7CC; font-size: 36rpx; margin-left: 12rpx; }
+
+.mask {
+  position: fixed; inset: 0; background: rgba(0,0,0,.4);
+  display: flex; align-items: flex-end; z-index: 10;
+}
+.sheet {
+  width: 100%; background: #fff; border-radius: 32rpx 32rpx 0 0;
+  padding: 40rpx 40rpx calc(40rpx + env(safe-area-inset-bottom));
+}
+.sheet-title { font-size: 32rpx; font-weight: 700; margin-bottom: 20rpx; text-align: center; }
+.gender-pick { display: flex; }
+.gender {
+  padding: 8rpx 32rpx; border-radius: 28rpx; background: #F5F5F7;
+  margin-right: 16rpx; font-size: 26rpx; color: #8E8E93;
+}
+.gender.on { background: rgba(0,102,204,.1); color: #0066CC; font-weight: 600; }
+.privacy-note { font-size: 22rpx; color: #FF9500; margin: 20rpx 0; }

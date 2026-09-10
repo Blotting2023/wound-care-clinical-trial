@@ -1,0 +1,74 @@
+<view class="wrap">
+  <view class="tabs">
+    <text class="tab {{tab === 'centers' ? 'on' : ''}}" bindtap="switchTab" data-t="centers">研究中心</text>
+    <text class="tab {{tab === 'protocols' ? 'on' : ''}}" bindtap="switchTab" data-t="protocols">试验方案</text>
+    <text class="tab {{tab === 'devices' ? 'on' : ''}}" bindtap="switchTab" data-t="devices">试用器械</text>
+  </view>
+
+  <!-- 中心 -->
+  <block wx:if="{{tab === 'centers'}}">
+    <view class="card" wx:for="{{centers}}" wx:key="_id">
+      <view class="c-row">
+        <text class="c-name">{{item.code}} · {{item.name}}</text>
+        <text wx:if="{{canManage}}" class="edit-link" bindtap="openEdit" data-c="{{item}}">编辑</text>
+      </view>
+      <text class="c-line">{{item.department}} · {{item.address}}</text>
+      <text class="c-line">PI：{{item.leadPiName || '待指派'}}</text>
+      <view class="c-line contact" wx:if="{{item.piContact}}" bindtap="callContact" data-phone="{{item.piContact}}">
+        📞 {{item.piContact}}
+      </view>
+      <text wx:if="{{item.irbNumber}}" class="c-line">IRB：{{item.irbNumber}}</text>
+    </view>
+  </block>
+
+  <!-- 方案 + 文档 -->
+  <block wx:if="{{tab === 'protocols'}}">
+    <view class="card" wx:for="{{protocols}}" wx:key="_id">
+      <view class="c-row">
+        <text class="c-name">{{item.code}} {{item.version}}</text>
+        <text class="tag tag-green">{{item.status === 'active' ? '进行中' : item.status}}</text>
+      </view>
+      <text class="c-line">{{item.name}}</text>
+      <text class="c-line">申办方：{{item.sponsor}} · {{item.phase}} 期</text>
+      <view class="doc-list" wx:if="{{docs.length && index === 0}}">
+        <view class="doc-title">方案文档（{{docs.length}}）</view>
+        <view class="doc-item" wx:for="{{docs}}" wx:for-item="d" wx:key="_id">
+          <text class="doc-icon {{d.fileExt === 'pdf' ? 'pdf' : ''}}">{{d.fileExt === 'pdf' ? 'PDF' : 'W'}}</text>
+          <view class="doc-main">
+            <text class="doc-name">{{d.fileName}}</text>
+            <text class="doc-meta">{{d.uploadedBy}} · {{d.uploadedAt}}</text>
+          </view>
+          <text class="doc-ver">{{d.version}}</text>
+        </view>
+        <view class="doc-note">V1 演示版登记元数据；在线预览待接对象存储</view>
+      </view>
+    </view>
+  </block>
+
+  <!-- 器械 -->
+  <block wx:if="{{tab === 'devices'}}">
+    <view class="card" wx:for="{{devices}}" wx:key="_id">
+      <view class="c-row">
+        <text class="c-name">{{item.code}}</text>
+        <text class="tag {{item.status === 'allocated' ? 'tag-orange' : 'tag-blue'}}">{{item.status === 'allocated' ? '已分配' : '在库'}}</text>
+      </view>
+      <text class="c-line">{{item.name}} · 批号 {{item.batchNo}}</text>
+    </view>
+  </block>
+
+  <!-- 编辑中心弹层（W6：负责人 + 联系方式） -->
+  <view wx:if="{{showEdit}}" class="mask" bindtap="closeEdit">
+    <view class="sheet" catchtap="">
+      <view class="sheet-title">编辑中心 — {{editForm.name}}</view>
+      <view class="input-row">
+        <text class="label">负责人</text>
+        <input value="{{editForm.leadPiName}}" data-field="leadPiName" bindinput="onEditInput" />
+      </view>
+      <view class="input-row">
+        <text class="label">联系方式</text>
+        <input value="{{editForm.piContact}}" data-field="piContact" bindinput="onEditInput" placeholder="电话 / 邮箱" />
+      </view>
+      <button class="btn-primary" style="margin-top:32rpx" bindtap="submitEdit">保存（入审计）</button>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,42 @@
+<view class="wrap">
+  <view class="card">
+    <view class="card-title">创面测量（cm 制）</view>
+    <view class="input-row">
+      <text class="label">长度 (cm)</text>
+      <input type="digit" value="{{lengthCm}}" data-field="lengthCm" bindinput="onNumInput" placeholder="0.0" />
+    </view>
+    <view class="input-row">
+      <text class="label">宽度 (cm)</text>
+      <input type="digit" value="{{widthCm}}" data-field="widthCm" bindinput="onNumInput" placeholder="0.0" />
+    </view>
+    <view class="auto-note">面积自动计算：{{lengthCm && widthCm ? (lengthCm * widthCm).toFixed(2) + ' cm²' : '—'}} cm²</view>
+  </view>
+
+  <view class="card">
+    <view class="card-title">VSS 量表（总分 {{vssTotal}}）</view>
+    <view class="vss-item" wx:for="{{vss}}" wx:key="key" wx:for-index="idx">
+      <text class="vss-label">{{item.label}}</text>
+      <view class="vss-scores">
+        <text wx:for="{{[0,1,2,3]}}" wx:for-item="s" wx:for-index="si" wx:key="*this"
+              class="score {{item.score === s ? 'on' : ''}}"
+              bindtap="onVssPick" data-idx="{{idx}}" data-score="{{s}}">{{s}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="card-title">CRF 三态字段（ND 未做 / UN 无法获得 / NA 不适用）</view>
+    <view class="vss-item" wx:for="{{crfFields}}" wx:key="key" wx:for-index="fidx">
+      <text class="vss-label">{{item.label}}</text>
+      <view class="vss-scores">
+        <text wx:for="{{item.options}}" wx:for-item="o" wx:for-index="oi" wx:key="*this"
+              class="score {{crf[item.key] === o ? 'on' : ''}}"
+              bindtap="onCrfPick" data-field="{{item.key}}" data-idx="{{oi}}">{{o}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="card">
+    <button class="btn-primary" disabled="{{busy}}" bindtap="submit">{{busy ? '提交中…' : '提交评估记录'}}</button>
+  </view>
+</view>

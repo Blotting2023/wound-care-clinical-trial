@@ -1,0 +1,49 @@
+<view class="wrap" wx:if="{{patient}}">
+  <view class="card head-card">
+    <view class="code-row">
+      <text class="code">{{patient.subjectCode}}</text>
+      <text class="tag {{patient.consentStatus === 'signed' ? 'tag-green' : 'tag-orange'}}">
+        {{patient.consentStatus === 'signed' ? '知情同意已签署' : '知情同意待完成'}}
+      </text>
+    </view>
+    <text class="meta">{{patient.gender}}{{patient.birthYear ? ' · ' + patient.birthYear + '年生' : ''}} · 病案号 {{patient.mrn || patient.mrnMasked}}</text>
+    <text class="meta">入组 {{patient.enrollmentDate}}</text>
+  </view>
+
+  <view wx:if="{{mode === 'pick'}}" class="card">
+    <button class="btn-primary" bindtap="startAssess">▶ 为该受试者开始评估（拍照）</button>
+    <view class="tip">评估须由研究者本人完成（GCP §4）</view>
+  </view>
+
+  <view class="section-title">创面部位（{{patient.wounds.length}}）</view>
+  <view class="card" wx:if="{{patient.wounds.length === 0}}"><view class="empty">暂无创面部位</view></view>
+  <view class="card" wx:for="{{patient.wounds}}" wx:key="_id" bindtap="goWound" data-id="{{item._id}}">
+    <view class="list-item">
+      <view class="li-main">
+        <text class="li-title">{{item.label}}</text>
+        <text class="li-sub" wx:if="{{item.bodyPart}}">{{item.bodyPart}}</text>
+      </view>
+      <text class="arrow">›</text>
+    </view>
+  </view>
+
+  <view wx:if="{{canManage}}" class="card">
+    <button class="btn-ghost" bindtap="openCreate">＋ 新增创面部位</button>
+  </view>
+
+  <!-- 新增部位弹层 -->
+  <view wx:if="{{showCreate}}" class="mask" bindtap="closeCreate">
+    <view class="sheet" catchtap="">
+      <view class="sheet-title">新增创面部位</view>
+      <view class="input-row">
+        <text class="label">部位名称</text>
+        <input value="{{form.label}}" data-field="label" bindinput="onFormInput" placeholder="如 足底溃烂" />
+      </view>
+      <view class="input-row">
+        <text class="label">身体部位</text>
+        <input value="{{form.bodyPart}}" data-field="bodyPart" bindinput="onFormInput" placeholder="如 左足" />
+      </view>
+      <button class="btn-primary" style="margin-top:32rpx" bindtap="submitCreate">创建</button>
+    </view>
+  </view>
+</view>

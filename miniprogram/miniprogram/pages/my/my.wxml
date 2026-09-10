@@ -1,0 +1,33 @@
+<view class="wrap" wx:if="{{user}}">
+  <view class="card head-card">
+    <view class="avatar" style="background: {{roleColor}}">{{user.displayName[0]}}</view>
+    <view class="head-main">
+      <text class="d-name">{{user.displayName}}</text>
+      <text class="d-role" style="color: {{roleColor}}">{{roleDisplay}} · {{user.username}}</text>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="card-title">我的权限（RBAC 矩阵）</view>
+    <view class="perm-wrap">
+      <text class="tag tag-blue" wx:for="{{permNames}}" wx:key="*this">{{item}}</text>
+      <text wx:if="{{permNames.length === 0}}" class="empty">无权限</text>
+    </view>
+    <text class="perm-note">服务端逐操作守门，越权写入审计哈希链</text>
+  </view>
+
+  <view class="card">
+    <view class="menu-item" bindtap="goConsent"><text>知情同意管理</text><text class="arrow">›</text></view>
+    <view class="menu-item" bindtap="goTrial"><text>试验管理（中心/方案/器械）</text><text class="arrow">›</text></view>
+    <view class="menu-item" bindtap="verifyChain">
+      <text>校验审计哈希链</text>
+      <text class="arrow">{{chainResult || '›'}}</text>
+    </view>
+  </view>
+
+  <view class="card">
+    <button class="btn-ghost" bindtap="logout">退出登录</button>
+  </view>
+
+  <view class="foot">创面评估系统 V1 · GCP / PIPL / 21 CFR Part 11 合规</view>
+</view>

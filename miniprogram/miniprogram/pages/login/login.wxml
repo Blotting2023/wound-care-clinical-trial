@@ -1,0 +1,36 @@
+<view class="wrap">
+  <view class="hero">
+    <view class="logo">创</view>
+    <text class="title">创面评估系统</text>
+    <text class="subtitle">医疗器械临床试验 · 数据采集端</text>
+  </view>
+
+  <view class="card">
+    <view class="input-row">
+      <text class="label">工号</text>
+      <input value="{{username}}" data-field="username" bindinput="onInput" placeholder="如 pi_demo" />
+    </view>
+    <view class="input-row">
+      <text class="label">密码</text>
+      <input password value="{{password}}" data-field="password" bindinput="onInput" placeholder="演示版任意" />
+    </view>
+    <button class="btn-primary login-btn" disabled="{{busy}}" bindtap="doLogin">
+      {{busy ? '登录中…' : '登录'}}
+    </button>
+    <view class="hint">首次登录将把工号与你的微信绑定（GCP 可溯源）</view>
+  </view>
+
+  <view class="card demo-card">
+    <text class="demo-title">演示账号（点按填充）</text>
+    <view class="demo-row">
+      <text class="tag tag-blue" bindtap="fillDemo" data-u="pi_demo">PI 主要研究者</text>
+      <text class="tag tag-green" bindtap="fillDemo" data-u="subi_demo">SubI</text>
+      <text class="tag tag-orange" bindtap="fillDemo" data-u="crc_demo">CRC</text>
+    </view>
+    <view class="demo-row">
+      <text class="tag tag-orange" bindtap="fillDemo" data-u="sponsor_demo">申办者</text>
+      <text class="tag tag-purple" bindtap="fillDemo" data-u="irb_demo">伦理</text>
+      <text class="tag tag-gray" bindtap="fillDemo" data-u="admin_demo">管理员</text>
+    </view>
+  </view>
+</view>
